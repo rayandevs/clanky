@@ -1,0 +1,30 @@
+import { env } from './config/env.js';
+import { version } from './config/version.js';
+import { Clanky } from './client/Clanky.js';
+import { logger, setLogLevel } from './core/logger.js';
+import { connectDatabase, disconnectDatabase } from './database/connection.js';
+import { registerEvents } from './events/index.js';
+import { modules } from './modules/index.js';
+
+setLogLevel(env.LOG_LEVEL);
+logger.info(`Starting Clanky ${version.label} (${version.codename}) in ${env.NODE_ENV} mode`);
+
+const client = new Clanky();
+client.register(modules);
+registerEvents(client);
+logger.info(`Loaded ${client.commands.size} commands and ${client.components.size} component handlers`);
+
+async function shutdown(signal: string): Promise<void> {
+  logger.info(`${signal} received, shutting down…`);
+  await client.destroy().catch(() => null);
+  await disconnectDatabase().catch(() => null);
+  process.exit(0);
+}
+
+process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection', reason));
+process.on('uncaughtException', (error) => logger.error('Uncaught exception', error));
+
+await connectDatabase();
+await client.login(env.DISCORD_TOKEN);

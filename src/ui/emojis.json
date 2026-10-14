@@ -1,0 +1,458 @@
+{
+  "success": {
+    "id": null,
+    "name": "success",
+    "fallback": "✅",
+    "animated": false
+  },
+  "error": {
+    "id": null,
+    "name": "error",
+    "fallback": "❌",
+    "animated": false
+  },
+  "warning": {
+    "id": null,
+    "name": "warning",
+    "fallback": "⚠️",
+    "animated": false
+  },
+  "info": {
+    "id": null,
+    "name": "info",
+    "fallback": "ℹ️",
+    "animated": false
+  },
+  "loading": {
+    "id": null,
+    "name": "loading",
+    "fallback": "⏳",
+    "animated": false
+  },
+  "settings": {
+    "id": null,
+    "name": "settings",
+    "fallback": "⚙️",
+    "animated": false
+  },
+  "on": {
+    "id": null,
+    "name": "on",
+    "fallback": "🟢",
+    "animated": false
+  },
+  "off": {
+    "id": null,
+    "name": "off",
+    "fallback": "🔴",
+    "animated": false
+  },
+  "back": {
+    "id": null,
+    "name": "back",
+    "fallback": "↩️",
+    "animated": false
+  },
+  "home": {
+    "id": null,
+    "name": "home",
+    "fallback": "🏠",
+    "animated": false
+  },
+  "channel": {
+    "id": null,
+    "name": "channel",
+    "fallback": "#️⃣",
+    "animated": false
+  },
+  "role": {
+    "id": null,
+    "name": "role",
+    "fallback": "🎭",
+    "animated": false
+  },
+  "user": {
+    "id": null,
+    "name": "user",
+    "fallback": "👤",
+    "animated": false
+  },
+  "members": {
+    "id": null,
+    "name": "members",
+    "fallback": "👥",
+    "animated": false
+  },
+  "message": {
+    "id": null,
+    "name": "message",
+    "fallback": "💬",
+    "animated": false
+  },
+  "edit": {
+    "id": null,
+    "name": "edit",
+    "fallback": "✏️",
+    "animated": false
+  },
+  "delete": {
+    "id": null,
+    "name": "delete",
+    "fallback": "🗑️",
+    "animated": false
+  },
+  "add": {
+    "id": null,
+    "name": "add",
+    "fallback": "➕",
+    "animated": false
+  },
+  "remove": {
+    "id": null,
+    "name": "remove",
+    "fallback": "➖",
+    "animated": false
+  },
+  "save": {
+    "id": null,
+    "name": "save",
+    "fallback": "💾",
+    "animated": false
+  },
+  "shield": {
+    "id": null,
+    "name": "shield",
+    "fallback": "🛡️",
+    "animated": false
+  },
+  "ban": {
+    "id": null,
+    "name": "ban",
+    "fallback": "🔨",
+    "animated": false
+  },
+  "kick": {
+    "id": null,
+    "name": "kick",
+    "fallback": "👢",
+    "animated": false
+  },
+  "timeout": {
+    "id": null,
+    "name": "timeout",
+    "fallback": "🔇",
+    "animated": false
+  },
+  "untimeout": {
+    "id": null,
+    "name": "untimeout",
+    "fallback": "🔊",
+    "animated": false
+  },
+  "warn": {
+    "id": null,
+    "name": "warn",
+    "fallback": "⚠️",
+    "animated": false
+  },
+  "unban": {
+    "id": null,
+    "name": "unban",
+    "fallback": "🔓",
+    "animated": false
+  },
+  "purge": {
+    "id": null,
+    "name": "purge",
+    "fallback": "🧹",
+    "animated": false
+  },
+  "case": {
+    "id": null,
+    "name": "case",
+    "fallback": "📁",
+    "animated": false
+  },
+  "ticket": {
+    "id": null,
+    "name": "ticket",
+    "fallback": "🎫",
+    "animated": false
+  },
+  "lock": {
+    "id": null,
+    "name": "lock",
+    "fallback": "🔒",
+    "animated": false
+  },
+  "claim": {
+    "id": null,
+    "name": "claim",
+    "fallback": "🙋",
+    "animated": false
+  },
+  "transcript": {
+    "id": null,
+    "name": "transcript",
+    "fallback": "📜",
+    "animated": false
+  },
+  "welcome": {
+    "id": null,
+    "name": "welcome",
+    "fallback": "👋",
+    "animated": false
+  },
+  "leave": {
+    "id": null,
+    "name": "leave",
+    "fallback": "🚪",
+    "animated": false
+  },
+  "suggestion": {
+    "id": null,
+    "name": "suggestion",
+    "fallback": "💡",
+    "animated": false
+  },
+  "upvote": {
+    "id": null,
+    "name": "upvote",
+    "fallback": "👍",
+    "animated": false
+  },
+  "downvote": {
+    "id": null,
+    "name": "downvote",
+    "fallback": "👎",
+    "animated": false
+  },
+  "approve": {
+    "id": null,
+    "name": "approve",
+    "fallback": "✅",
+    "animated": false
+  },
+  "deny": {
+    "id": null,
+    "name": "deny",
+    "fallback": "⛔",
+    "animated": false
+  },
+  "reminder": {
+    "id": null,
+    "name": "reminder",
+    "fallback": "⏰",
+    "animated": false
+  },
+  "clock": {
+    "id": null,
+    "name": "clock",
+    "fallback": "🕒",
+    "animated": false
+  },
+  "snooze": {
+    "id": null,
+    "name": "snooze",
+    "fallback": "💤",
+    "animated": false
+  },
+  "done": {
+    "id": null,
+    "name": "done",
+    "fallback": "✔️",
+    "animated": false
+  },
+  "poll": {
+    "id": null,
+    "name": "poll",
+    "fallback": "📊",
+    "animated": false
+  },
+  "level": {
+    "id": null,
+    "name": "level",
+    "fallback": "⭐",
+    "animated": false
+  },
+  "trophy": {
+    "id": null,
+    "name": "trophy",
+    "fallback": "🏆",
+    "animated": false
+  },
+  "xp": {
+    "id": null,
+    "name": "xp",
+    "fallback": "✨",
+    "animated": false
+  },
+  "sparkles": {
+    "id": null,
+    "name": "sparkles",
+    "fallback": "✨",
+    "animated": false
+  },
+  "rocket": {
+    "id": null,
+    "name": "rocket",
+    "fallback": "🚀",
+    "animated": false
+  },
+  "version": {
+    "id": null,
+    "name": "version",
+    "fallback": "🏷️",
+    "animated": false
+  },
+  "ping": {
+    "id": null,
+    "name": "ping",
+    "fallback": "🏓",
+    "animated": false
+  },
+  "help": {
+    "id": null,
+    "name": "help",
+    "fallback": "📖",
+    "animated": false
+  },
+  "palette": {
+    "id": null,
+    "name": "palette",
+    "fallback": "🎨",
+    "animated": false
+  },
+  "log": {
+    "id": null,
+    "name": "log",
+    "fallback": "📋",
+    "animated": false
+  },
+  "automod": {
+    "id": null,
+    "name": "automod",
+    "fallback": "🤖",
+    "animated": false
+  },
+  "link": {
+    "id": null,
+    "name": "link",
+    "fallback": "🔗",
+    "animated": false
+  },
+  "mention": {
+    "id": null,
+    "name": "mention",
+    "fallback": "📣",
+    "animated": false
+  },
+  "filter": {
+    "id": null,
+    "name": "filter",
+    "fallback": "🚫",
+    "animated": false
+  },
+  "bell": {
+    "id": null,
+    "name": "bell",
+    "fallback": "🔔",
+    "animated": false
+  },
+  "dm": {
+    "id": null,
+    "name": "dm",
+    "fallback": "📨",
+    "animated": false
+  },
+  "crown": {
+    "id": null,
+    "name": "crown",
+    "fallback": "👑",
+    "animated": false
+  },
+  "next": {
+    "id": null,
+    "name": "next",
+    "fallback": "▶️",
+    "animated": false
+  },
+  "prev": {
+    "id": null,
+    "name": "prev",
+    "fallback": "◀️",
+    "animated": false
+  },
+  "first": {
+    "id": null,
+    "name": "first",
+    "fallback": "⏮️",
+    "animated": false
+  },
+  "last": {
+    "id": null,
+    "name": "last",
+    "fallback": "⏭️",
+    "animated": false
+  },
+  "refresh": {
+    "id": null,
+    "name": "refresh",
+    "fallback": "🔄",
+    "animated": false
+  },
+  "bot": {
+    "id": null,
+    "name": "bot",
+    "fallback": "🤖",
+    "animated": false
+  },
+  "heart": {
+    "id": null,
+    "name": "heart",
+    "fallback": "❤️",
+    "animated": false
+  },
+  "list": {
+    "id": null,
+    "name": "list",
+    "fallback": "📝",
+    "animated": false
+  },
+  "report": {
+    "id": null,
+    "name": "report",
+    "fallback": "🚩",
+    "animated": false
+  },
+  "calendar": {
+    "id": null,
+    "name": "calendar",
+    "fallback": "📅",
+    "animated": false
+  },
+  "server": {
+    "id": null,
+    "name": "server",
+    "fallback": "🏰",
+    "animated": false
+  },
+  "privacy": {
+    "id": null,
+    "name": "privacy",
+    "fallback": "🔐",
+    "animated": false
+  },
+  "modules": {
+    "id": null,
+    "name": "modules",
+    "fallback": "🧩",
+    "animated": false
+  },
+  "test": {
+    "id": null,
+    "name": "test",
+    "fallback": "🧪",
+    "animated": false
+  }
+}
