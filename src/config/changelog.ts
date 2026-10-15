@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.7',
+    date: '2026-10-15',
+    title: 'The dashboard is here 🖥️',
+    highlights: [
+      'Change every setting from the web dashboard',
+      'See your Salvage profile, bag and collection online',
+      'Server overview with stats and change history',
+    ],
+  },
+  {
     version: '0.1.0-beta.6',
     date: '2026-10-15',
     title: 'Image screens 🖼️',

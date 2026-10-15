@@ -9,7 +9,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 - **Interactive setup.** Admins configure everything in `/settings` with buttons, select menus and modals.
 - **New modal components.** Labels, role selects, radio groups and checkboxes inside modals.
 - **Native Discord features.** AutoMod rules, native polls, user-installable commands and context menus.
-- **Dashboard-ready.** Settings live in a shared, validated schema with an audit log and live cache refresh.
+- **Web dashboard.** Manage every setting, see server stats and your Salvage progress at the same address the bot runs on.
 
 ---
 
@@ -121,6 +121,13 @@ npm start
 | `OWNER_IDS` | | Comma-separated owner user IDs |
 | `SUPPORT_URL` | | Adds a Support button to `/about` |
 | `ENABLE_MESSAGE_CONTENT` | | `false` to run without the Message Content intent |
+| `DASHBOARD_ENABLED` | | `false` to turn the website off (default `true`) |
+| `DASHBOARD_PORT` | | Port for the website and API (default `3000`) |
+| `DASHBOARD_HOST` | | Bind address (default `0.0.0.0`) |
+| `DASHBOARD_URL` | | Public URL of the dashboard, used for the OAuth redirect (default `http://localhost:3000`) |
+| `DISCORD_CLIENT_SECRET` | | OAuth2 client secret. Needed for "Log in with Discord" |
+| `DASHBOARD_SESSION_SECRET` | | 32+ random characters. Signs cookies and encrypts tokens. If missing, a random one is used and logins reset on restart |
+| `DASHBOARD_TRUST_PROXY` | | `true` behind a reverse proxy (Nginx, Cloudflare) |
 
 Clanky validates every variable when it starts and shows a clear list of anything missing or wrong.
 
@@ -204,24 +211,52 @@ While `id` is `null`, the Unicode `fallback` is used. To use your own emoji, upl
 - Add a matching entry to `src/config/changelog.ts`.
 - On startup, Clanky posts **What's new** in servers that picked an update notes channel and haven't seen the version yet. Users who turned on update notices get a one-time note after their next command.
 
-## 🖥️ Dashboard-ready design
+## 🖥️ Dashboard
 
-The bot is built so a web dashboard can plug in later without refactoring:
+The dashboard is Clanky's home on the web. It runs **inside the bot process**: one `npm start` serves the bot, the API and the website, so every save reaches Discord right away.
 
-- **One settings contract.** `settings/schema.ts` (Zod) defines every setting with defaults and limits. The dashboard imports the same schema to validate input and render forms.
-- **Service layer.** `services/` handles all reads and writes (`guilds.update()`, `users.updatePreferences()`…) with caching, validation and auditing. It doesn't depend on Discord interactions.
-- **Audit log.** Each settings change is saved in `SettingsAudit` with the actor and its source (`bot` or `dashboard`), kept for 90 days.
-- **Live refresh.** With `MONGODB_WATCH_CHANGES=true`, changes made by the dashboard show up in the bot right away.
-- **Internal event bus.** `bus.emit('settingsChanged')` lets modules react to changes. For example, AutoMod rules turn on and off with the module.
-- **Module registry.** `settings/registry.ts` describes every module (name, emoji, description) for navigation.
-- **Self-healing documents.** Settings are parsed with defaults on read, so new settings in future versions never break old servers.
+- **Stack:** React 19, Vite, Tailwind CSS 4, Motion, TanStack Query (in `dashboard/`). The API is Fastify (in `src/dashboard/`).
+- **Pages:** homepage with live message mockups, server picker, server overview (stats, 14-day activity, modules, recent cases, leaderboards), every settings section with live previews, change history, your preferences, and your Salvage profile, bag and collection.
+- **One settings contract.** The API validates with the same Zod schema as the bot (`settings/schema.ts`) and saves through the same services, so changes are audited with source `dashboard`.
+
+### Setup
+
+1. Developer Portal → **OAuth2** → copy the **Client Secret** into `DISCORD_CLIENT_SECRET`.
+2. Add the redirect URL `${DASHBOARD_URL}/api/auth/callback`, e.g. `http://localhost:3000/api/auth/callback`.
+3. Set `DASHBOARD_SESSION_SECRET` (for example `openssl rand -base64 48`).
+4. `npm install` also installs the dashboard (postinstall). Then `npm run build && npm start` and open `http://localhost:3000`.
+
+### Developing the website
+
+```bash
+npm run dev             # bot + API on :3000
+npm run dashboard:dev   # Vite on :5173 with hot reload, proxies /api to :3000
+```
+
+For OAuth while using Vite, set `DASHBOARD_URL=http://localhost:5173` and add `http://localhost:5173/api/auth/callback` as a redirect.
+
+`npm run dashboard:demo` builds a static preview with sample data (`dashboard/dist-demo`), no bot or login needed.
+
+### Dashboard versioning
+
+The website has its own version, separate from the bot:
+
+- Source of truth: `dashboard/package.json` → `version` (`0.1.0-alpha.1`, codename **Scrapyard**).
+- `npm run dashboard:release` bumps the alpha build. Add a matching entry to `dashboard/changelog.json` (shown on the Changelog page) and `dashboard/CHANGELOG.md`.
+- Git tags use the `dashboard-v` prefix (`dashboard-v0.1.0-alpha.1`). Bot tags stay `v…`.
+- The footer and `/api/meta` show both versions.
 
 ## 🛠️ Scripts
 
 | Script | Description |
 | --- | --- |
 | `npm run dev` | Run with hot reload |
-| `npm run build` | Compile to `dist/` |
+| `npm run build` | Compile the bot to `dist/` and build the dashboard |
+| `npm run build:bot` | Compile only the bot |
+| `npm run dashboard:dev` | Dashboard dev server with hot reload |
+| `npm run dashboard:build` | Build the dashboard to `dashboard/dist` |
+| `npm run dashboard:demo` | Static demo build with sample data |
+| `npm run dashboard:release` | Bump the dashboard alpha version |
 | `npm start` | Run the compiled bot |
 | `npm run typecheck` | Type-check without emitting |
 | `npm run deploy:commands` | Register commands (`-- --global`, `-- --clear`) |

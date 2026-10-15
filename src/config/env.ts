@@ -27,6 +27,19 @@ const EnvSchema = z.object({
   OWNER_IDS: csvIds,
   SUPPORT_URL: z.url().optional(),
   ENABLE_MESSAGE_CONTENT: bool(true),
+
+  // Dashboard (runs inside the bot process)
+  DASHBOARD_ENABLED: bool(true),
+  DASHBOARD_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  DASHBOARD_HOST: z.string().min(1).default('0.0.0.0'),
+  /** Public address of the dashboard, used for the Discord login redirect. */
+  DASHBOARD_URL: z.url().default('http://localhost:3000').transform((url) => url.replace(/\/+$/, '')),
+  /** OAuth2 client secret from the developer portal. Needed for login. */
+  DISCORD_CLIENT_SECRET: z.string().min(1).optional(),
+  /** Encrypts login sessions. Use a long random string. */
+  DASHBOARD_SESSION_SECRET: z.string().min(32, 'must be at least 32 characters').optional(),
+  /** Set to true behind a reverse proxy (Caddy, Nginx, Railway…). */
+  DASHBOARD_TRUST_PROXY: bool(false),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

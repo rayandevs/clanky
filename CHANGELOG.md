@@ -2,6 +2,19 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## [0.1.0-beta.7] — 2026-10-15
+
+### Added
+- Web dashboard served by the bot process (Fastify on `DASHBOARD_PORT`). The website has its own version, see `dashboard/CHANGELOG.md`
+- Discord OAuth2 login (`identify guilds`), sessions stored hashed in MongoDB, tokens encrypted with AES-256-GCM
+- Dashboard API: server list, server overview, every settings section, AutoMod rule toggles, ticket panel posting, change history, user preferences, Salvage stats and image cards, data deletion
+- New env vars: `DASHBOARD_ENABLED`, `DASHBOARD_PORT`, `DASHBOARD_HOST`, `DASHBOARD_URL`, `DISCORD_CLIENT_SECRET`, `DASHBOARD_SESSION_SECRET`, `DASHBOARD_TRUST_PROXY`
+- `DashboardSession` model. `/data delete` also ends dashboard sessions
+
+### Security
+- Mutating API calls need the `X-Clanky` header (CSRF), cookies are signed, httpOnly and SameSite=Lax
+- Server access is re-checked live (Manage Server) on every request
+
 ## [0.1.0-beta.6] — 2026-10-15
 
 ### Added
