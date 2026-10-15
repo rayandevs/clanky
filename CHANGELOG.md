@@ -2,6 +2,20 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## [0.1.0-beta.6] — 2026-10-15
+
+### Added
+- Image cards for `/salvage bag` (12 items per page), `/salvage shop` (all six tabs) and `/salvage collection`
+- Status bar on every game card: bag size, credits, zone and active boosts
+- Numbered shop rows with matching numbered buttons
+- Shared game renderer (`src/render/game.ts`) and new card renderers (`src/render/salvageCards.ts`)
+
+### Changed
+- Find and event cards now include the status bar, so the message text is shorter
+- Upgrade rows show the current and next value
+- Shorter badge hints, and the Black Market timer shows hours and minutes only
+- Explorer badge now uses a rocket icon
+
 ## [0.1.0-beta.5] — 2026-10-15
 
 ### Added

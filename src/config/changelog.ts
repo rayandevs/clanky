@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.6',
+    date: '2026-10-15',
+    title: 'Image screens 🖼️',
+    highlights: [
+      'Bag, shop and collection are now image cards',
+      'Your bag, credits, zone and boosts show on every game card',
+      'Shop buttons are numbered to match each row',
+    ],
+  },
+  {
     version: '0.1.0-beta.5',
     date: '2026-10-15',
     title: 'The big shop update 🛒',

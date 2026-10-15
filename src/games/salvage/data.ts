@@ -326,10 +326,10 @@ export interface Badge {
 }
 
 export const BADGES: Badge[] = [
-  { id: 'legend', name: 'Legend Finder', icon: '1f4a0', hint: 'Find a Legendary item' },
+  { id: 'legend', name: 'Legend Finder', icon: '1f4a0', hint: 'Legendary find' },
   { id: 'shiny', name: 'Shiny', icon: '2728', hint: 'Find a shiny' },
   { id: 'slayer', name: 'Golem Slayer', icon: '1f47e', hint: 'Beat 10 golems' },
-  { id: 'collector', name: 'Collector', icon: '1f4d6', hint: 'Complete a zone collection' },
-  { id: 'streak', name: 'Dedicated', icon: '1f525', hint: 'Reach a 7 day streak' },
-  { id: 'explorer', name: 'Explorer', icon: '1f30c', hint: 'Reach the Space Dump' },
+  { id: 'collector', name: 'Collector', icon: '1f4d6', hint: 'Full zone' },
+  { id: 'streak', name: 'Dedicated', icon: '1f525', hint: '7 day streak' },
+  { id: 'explorer', name: 'Explorer', icon: '1f680', hint: 'Space Dump' },
 ];

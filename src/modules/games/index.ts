@@ -21,6 +21,7 @@ import {
   shopView,
   svid,
   topView,
+  type Note,
   type ShopTab,
   type View,
 } from './views.js';
@@ -75,9 +76,11 @@ const salvageCommand = slashCommand({
     const blocked = blockedHere(ctx);
     if (blocked) return reply(interaction, 'info', blocked);
 
-    const flags = MessageFlags.IsComponentsV2 | (user.preferences.privateReplies ? MessageFlags.Ephemeral : 0);
     const me = interaction.user.id;
-    const send = (view: View) => interaction.reply({ ...view, flags });
+    const send = async (build: Promise<View>) => {
+      await interaction.deferReply(user.preferences.privateReplies ? { flags: MessageFlags.Ephemeral } : {});
+      return interaction.editReply({ ...(await build), flags: MessageFlags.IsComponentsV2 });
+    };
 
     switch (interaction.options.getSubcommand()) {
       case 'dig': {
@@ -87,12 +90,11 @@ const salvageCommand = slashCommand({
         return interaction.editReply({ ...(await result.view()), flags: MessageFlags.IsComponentsV2 });
       }
       case 'bag':
-        return send(bagView(await salvage.get(me), me, accent));
+        return send(salvage.get(me).then((p) => bagView(p, me, accent)));
       case 'shop':
-        return send(shopView(await salvage.get(me), me, accent, 'market'));
+        return send(salvage.get(me).then((p) => shopView(p, me, accent, 'market')));
       case 'collection': {
-        const player = await salvage.get(me);
-        return send(collectionView(player, me, zoneOf(player).id, accent));
+        return send(salvage.get(me).then((p) => collectionView(p, me, zoneOf(p).id, accent)));
       }
       case 'profile': {
         const target = interaction.options.getUser('user') ?? interaction.user;
@@ -151,16 +153,16 @@ const salvageComponents = components({
         return;
       }
       case 'bag':
-        return show(bagView(await salvage.get(owner), owner, accent));
+        return showDeferred(async () => bagView(await salvage.get(owner), owner, accent, Number(args[0]) || 0));
       case 'sell': {
         const result = await salvage.sell(owner, args[0] === 'all' ? 'all' : 'junk');
-        const note = result.count
-          ? `${emoji('success')} Sold **${result.count.toLocaleString()}** items for ${emoji('credits')} **${result.credits.toLocaleString()}** credits.`
-          : `${emoji('info')} Nothing to sell there.`;
-        return show(bagView(result.player, owner, accent, note));
+        const note: Note = result.count
+          ? { tone: 'success', text: `Sold ${result.count.toLocaleString()} items for ${result.credits.toLocaleString()} credits` }
+          : { tone: 'info', text: 'Nothing to sell there' };
+        return showDeferred(() => bagView(result.player, owner, accent, 0, note));
       }
       case 'shop':
-        return show(shopView(await salvage.get(owner), owner, accent, asTab(args[0])));
+        return showDeferred(async () => shopView(await salvage.get(owner), owner, accent, asTab(args[0])));
       case 'buy': {
         const tool = TOOL_BY_ID.get(args[0] ?? '');
         const result = await salvage.buyTool(owner, args[0] ?? '');
@@ -168,22 +170,20 @@ const salvageComponents = components({
           const why = { level: `You need level **${tool?.level}** for that.`, credits: "You don't have enough credits yet.", unknown: "That tool doesn't exist." }[result.reason];
           return reply(interaction, 'warning', why);
         }
-        const note = result.bought
-          ? `${emoji('party')} You bought the ${tool!.emoji} **${tool!.name}**! It's equipped.`
-          : `${emoji('success')} Equipped the ${tool!.emoji} **${tool!.name}**.`;
-        return show(shopView(result.player, owner, accent, 'tools', note));
+        const note: Note = { tone: 'success', text: result.bought ? `You bought the ${tool!.name}. It's equipped!` : `Equipped the ${tool!.name}` };
+        return showDeferred(() => shopView(result.player, owner, accent, 'tools', note));
       }
       case 'up': {
         const result = await salvage.buyUpgrade(owner, args[0] as UpgradeId);
         if (!result.ok) return reply(interaction, 'warning', result.reason === 'max' ? "That's already maxed out." : "You don't have enough credits yet.");
         const up = UPGRADE_BY_ID.get(args[0] as UpgradeId)!;
-        return show(shopView(result.player, owner, accent, 'upgrades', `${emoji('success')} ${up.emoji} **${up.name}** is now level **${result.level}**.`));
+        return showDeferred(() => shopView(result.player, owner, accent, 'upgrades', { tone: 'success', text: `${up.name} is now level ${result.level}` }));
       }
       case 'boost': {
         const result = await salvage.buyBoost(owner, args[0] as BoostId);
         if (!result.ok) return reply(interaction, 'warning', result.reason === 'full' ? "You can't stack any more of that." : "You don't have enough credits yet.");
         const boost = BOOST_BY_ID.get(args[0] as BoostId)!;
-        return show(shopView(result.player, owner, accent, 'boosts', `${emoji('success')} ${boost.emoji} **${boost.name}** is active.`));
+        return showDeferred(() => shopView(result.player, owner, accent, 'boosts', { tone: 'success', text: `${boost.name} is active` }));
       }
       case 'crate': {
         const result = await salvage.openCrate(owner, args[0] as CrateId);
@@ -213,20 +213,22 @@ const salvageComponents = components({
           const label = result.deal.kind === 'crate' ? `${emoji('crate')} **Black Market crate opened!**` : `${emoji('success')} **Bought from the Black Market!**`;
           return showDeferred(() => findView(grant, owner, accent, label));
         }
-        return show(shopView(result.player, owner, accent, 'market', `${emoji('success')} Deal bought. Your boost is active.`));
+        return showDeferred(() => shopView(result.player, owner, accent, 'market', { tone: 'success', text: 'Deal bought. Your boost is active' }));
       }
       case 'cosbuy': {
         const [kind, id] = args as ['theme' | 'title', string];
         const result = await salvage.buyCosmetic(owner, kind, id);
         if (!result.ok) return reply(interaction, 'warning', result.reason);
         const name = (kind === 'theme' ? THEME_BY_ID.get(id) : TITLE_BY_ID.get(id))!.name;
-        return show(shopView(result.player, owner, accent, 'cosmetics', `${emoji('party')} You unlocked **${name}**! It's equipped. Check ${ctx.client.cmd('salvage', 'profile')}.`));
+        return showDeferred(() => shopView(result.player, owner, accent, 'cosmetics', { tone: 'success', text: `You unlocked ${name}. It's on your profile card!` }));
       }
       case 'profile':
         return showDeferred(async () => profileView(await salvage.get(owner), interaction.user, owner, accent, guildIdOf(ctx)));
       case 'col': {
-        const player = await salvage.get(owner);
-        return show(collectionView(player, owner, args[0] ?? zoneOf(player).id, accent));
+        return showDeferred(async () => {
+          const player = await salvage.get(owner);
+          return collectionView(player, owner, args[0] ?? zoneOf(player).id, accent);
+        });
       }
       case 'top': {
         const [scope, page] = args;
@@ -252,8 +254,12 @@ const salvageComponents = components({
       }
       return interaction.followUp({ ...notice(`You traveled to ${zone.emoji} **${zone.name}**. Loot here is worth ×${zone.valueMultiplier}!`), flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
     }
+    const showDeferred = async (build: () => Promise<View>) => {
+      await interaction.deferUpdate();
+      await interaction.editReply({ ...(await build()), attachments: [] });
+    };
     if (action === 'tab') {
-      return interaction.update({ ...shopView(await salvage.get(owner), owner, accent, asTab(value)), attachments: [] });
+      return showDeferred(async () => shopView(await salvage.get(owner), owner, accent, asTab(value)));
     }
     if (action === 'cos') {
       const kind = args[0] === 'title' ? 'title' : 'theme';
@@ -262,16 +268,16 @@ const salvageComponents = components({
       if (owned.includes(value)) {
         const result = await salvage.buyCosmetic(owner, kind, value);
         const name = (kind === 'theme' ? THEME_BY_ID.get(value) : TITLE_BY_ID.get(value))?.name ?? value;
-        return interaction.update({ ...shopView(result.ok ? result.player : player, owner, accent, 'cosmetics', `${emoji('success')} Equipped **${name}**.`), attachments: [] });
+        return showDeferred(() => shopView(result.ok ? result.player : player, owner, accent, 'cosmetics', { tone: 'success', text: `Equipped ${name}` }));
       }
       const locked = salvage.cosmeticLocked(player, kind, value);
       // Re-render so the menu snaps back to what's equipped.
-      await interaction.update({ ...(locked ? shopView(player, owner, accent, 'cosmetics') : cosmeticConfirmView(player, owner, accent, kind, value)), attachments: [] });
+      await showDeferred(async () => (locked ? shopView(player, owner, accent, 'cosmetics') : cosmeticConfirmView(player, owner, accent, kind, value)));
       if (locked) return interaction.followUp({ components: [noticeBox('warning', locked)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
       return;
     }
     if (action === 'col') {
-      return interaction.update({ ...collectionView(await salvage.get(owner), owner, value, accent), attachments: [] });
+      return showDeferred(async () => collectionView(await salvage.get(owner), owner, value, accent));
     }
   },
 });

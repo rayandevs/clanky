@@ -183,6 +183,7 @@ Clanky's own game. Press **🔧 Dig** and Clanky digs through the scrap for some
 - **Events**: sometimes a 👾 Scrap Golem (fight or run) or a 📦 Mystery Crate shows up.
 - **Streaks**: the first dig of each day gives a bonus that grows with your streak.
 - **Leaderboards**: `/salvage top` for this server or the whole world. Progress is global.
+- **Image screens**: finds, events, profile, bag, shop and collection are all image cards. Each card shows your bag, credits, zone and active boosts at the bottom.
 
 Balance and content live in [`src/games/salvage/data.ts`](src/games/salvage/data.ts). Add an item by adding one line and dropping its Twemoji SVG in `assets/icons/`. All game logic is in `SalvageService` (no Discord code), so the dashboard can reuse it. Loot writes are atomic, so button spam can't duplicate items.
 
