@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.5',
+    date: '2026-10-15',
+    title: 'The big shop update 🛒',
+    highlights: [
+      'Black Market with 3 new deals every day',
+      'Upgrades, boosts and crates',
+      'Profile themes, titles and badges',
+    ],
+  },
+  {
     version: '0.1.0-beta.4',
     date: '2026-10-15',
     title: 'Profile cards 🪪',

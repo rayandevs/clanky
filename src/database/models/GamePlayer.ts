@@ -28,6 +28,17 @@ export interface GamePlayerRecord {
   cooldownUntil: Date;
   pendingEvent: { type: GameEventType; zone: string; expiresAt: Date } | null;
   golemWins: number;
+  bestStreak: number;
+  /** Upgrade id → level */
+  upgrades: Record<string, number>;
+  /** Digs left on each boost (bait = uses) */
+  boosts: { luck: number; xp: number; bait: number };
+  /** Black Market purchases today */
+  market: { day: string; bought: number[] } | null;
+  theme: string;
+  ownedThemes: string[];
+  title: string;
+  ownedTitles: string[];
   guildIds: string[];
 }
 
@@ -51,6 +62,14 @@ const gamePlayerSchema = new Schema<GamePlayerRecord>(
     cooldownUntil: { type: Date, default: () => new Date(0) },
     pendingEvent: { type: new Schema({ type: { type: String }, zone: String, expiresAt: Date }, { _id: false }), default: null },
     golemWins: { type: Number, default: 0 },
+    bestStreak: { type: Number, default: 0 },
+    upgrades: { type: Map, of: Number, default: {} },
+    boosts: { type: new Schema({ luck: { type: Number, default: 0 }, xp: { type: Number, default: 0 }, bait: { type: Number, default: 0 } }, { _id: false }), default: () => ({}) },
+    market: { type: new Schema({ day: String, bought: [Number] }, { _id: false }), default: null },
+    theme: { type: String, default: 'hazard' },
+    ownedThemes: { type: [String], default: ['hazard'] },
+    title: { type: String, default: 'rookie' },
+    ownedTitles: { type: [String], default: ['rookie'] },
     guildIds: { type: [String], default: [] },
   },
   { timestamps: true },

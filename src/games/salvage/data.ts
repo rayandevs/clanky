@@ -187,3 +187,149 @@ export function gameLevel(xp: number): { level: number; current: number; needed:
   }
   return { level, current: remaining, needed: xpToNext(level) };
 }
+
+/* ─────────────── Shop: Upgrades ─────────────── */
+
+export interface Upgrade {
+  id: 'turbo' | 'detector' | 'haggler' | 'armor';
+  name: string;
+  emoji: string;
+  description: string;
+  maxLevel: number;
+  /** Cost of the first level; each level costs `growth`× more */
+  baseCost: number;
+  growth: number;
+  /** Effect per level */
+  perLevel: number;
+}
+
+export const UPGRADES: Upgrade[] = [
+  { id: 'turbo', name: 'Turbo Motor', emoji: '⚡', description: 'Dig cooldown', maxLevel: 10, baseCost: 1_500, growth: 1.6, perLevel: 0.2 },
+  { id: 'detector', name: 'Metal Detector', emoji: '📡', description: 'Shiny chance', maxLevel: 10, baseCost: 2_000, growth: 1.6, perLevel: 0.1 },
+  { id: 'haggler', name: 'Haggler', emoji: '🤝', description: 'Sell bonus', maxLevel: 10, baseCost: 2_500, growth: 1.6, perLevel: 0.05 },
+  { id: 'armor', name: 'Golem Armor', emoji: '🛡️', description: 'Golem win chance', maxLevel: 10, baseCost: 1_000, growth: 1.55, perLevel: 0.03 },
+];
+
+export type UpgradeId = Upgrade['id'];
+export const UPGRADE_BY_ID = new Map(UPGRADES.map((u) => [u.id, u]));
+export const upgradeCost = (u: Upgrade, level: number) => Math.round((u.baseCost * u.growth ** level) / 50) * 50;
+
+/* ─────────────── Shop: Boosts ─────────────── */
+
+export interface Boost {
+  id: 'luck' | 'xp' | 'bait';
+  name: string;
+  emoji: string;
+  description: string;
+  price: number;
+  /** Digs (or uses) added per purchase */
+  amount: number;
+  /** Max stacked digs/uses */
+  cap: number;
+}
+
+export const BOOSTS: Boost[] = [
+  { id: 'luck', name: 'Lucky Charm', emoji: '🍀', description: '+50% luck', price: 1_500, amount: 25, cap: 200 },
+  { id: 'xp', name: 'XP Battery', emoji: '🔋', description: '2× game XP', price: 1_200, amount: 25, cap: 200 },
+  { id: 'bait', name: 'Golem Bait', emoji: '🍖', description: 'A golem shows up on your next dig', price: 800, amount: 1, cap: 5 },
+];
+
+export type BoostId = Boost['id'];
+export const BOOST_BY_ID = new Map(BOOSTS.map((b) => [b.id, b]));
+export const BOOST_EFFECT = { luck: 1.5, xp: 2 } as const;
+
+/* ─────────────── Shop: Crates ─────────────── */
+
+export interface Crate {
+  id: 'rusty' | 'golden' | 'cosmic';
+  name: string;
+  emoji: string;
+  icon: string;
+  price: number;
+  /** Rarity odds in percent (must add up to 100) */
+  odds: Partial<Record<Rarity, number>>;
+}
+
+export const CRATES: Crate[] = [
+  { id: 'rusty', name: 'Rusty Crate', emoji: '📦', icon: '1f4e6', price: 1_000, odds: { uncommon: 60, rare: 30, epic: 9, legendary: 1 } },
+  { id: 'golden', name: 'Golden Crate', emoji: '🎁', icon: '1f381', price: 6_000, odds: { rare: 60, epic: 32, legendary: 8 } },
+  { id: 'cosmic', name: 'Cosmic Crate', emoji: '🌠', icon: '1f320', price: 30_000, odds: { epic: 70, legendary: 30 } },
+];
+
+export type CrateId = Crate['id'];
+export const CRATE_BY_ID = new Map(CRATES.map((c) => [c.id, c]));
+
+/* ─────────────── Shop: Black Market ─────────────── */
+
+export const MARKET = {
+  /** Discount on boost and crate deals */
+  boostDiscount: 0.4,
+  crateDiscount: 0.3,
+  /** Price of a missing collection item, as a multiple of its value */
+  itemMarkup: 3,
+  /** The daily hot item sells for this much more */
+  hotMultiplier: 3,
+} as const;
+
+/* ─────────────── Cosmetics ─────────────── */
+
+export interface Theme {
+  id: string;
+  name: string;
+  emoji: string;
+  /** Stripe color on the profile card. null = server accent color */
+  stripe: number | null;
+  /** Card background */
+  background: string;
+  price: number;
+  level: number;
+}
+
+export const THEMES: Theme[] = [
+  { id: 'hazard', name: 'Hazard', emoji: '🚧', stripe: null, background: '#111118', price: 0, level: 1 },
+  { id: 'toxic', name: 'Toxic', emoji: '☢️', stripe: 0x4ade80, background: '#0f1712', price: 5_000, level: 5 },
+  { id: 'molten', name: 'Molten', emoji: '🌋', stripe: 0xfb923c, background: '#1a110d', price: 12_000, level: 12 },
+  { id: 'frost', name: 'Frost', emoji: '❄️', stripe: 0x7dd3fc, background: '#0d141a', price: 20_000, level: 20 },
+  { id: 'void', name: 'Void', emoji: '🕳️', stripe: 0xa855f7, background: '#0b0912', price: 60_000, level: 35 },
+  { id: 'goldrush', name: 'Gold Rush', emoji: '🏆', stripe: 0xfbbf24, background: '#16130b', price: 150_000, level: 50 },
+];
+
+export interface Title {
+  id: string;
+  name: string;
+  price: number;
+  level: number;
+  /** Extra unlock rule, checked against the player */
+  requirement?: { golemWins?: number; digs?: number; shinies?: number };
+  hint?: string;
+}
+
+export const TITLES: Title[] = [
+  { id: 'rookie', name: 'Rookie Digger', price: 0, level: 1 },
+  { id: 'bolt', name: 'Bolt Collector', price: 3_000, level: 3 },
+  { id: 'hoarder', name: 'Scrap Hoarder', price: 15_000, level: 10 },
+  { id: 'slayer', name: 'Golem Slayer', price: 10_000, level: 1, requirement: { golemWins: 25 }, hint: 'Beat 25 golems' },
+  { id: 'sparkle', name: 'Shiny Hunter', price: 20_000, level: 1, requirement: { shinies: 5 }, hint: 'Find 5 different shinies' },
+  { id: 'veteran', name: 'Scrap Veteran', price: 25_000, level: 1, requirement: { digs: 5_000 }, hint: 'Dig 5,000 times' },
+  { id: 'king', name: 'Junk King', price: 100_000, level: 40 },
+];
+
+export const THEME_BY_ID = new Map(THEMES.map((t) => [t.id, t]));
+export const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));
+
+/** Badges are earned by playing (never bought) and show on the profile card. */
+export interface Badge {
+  id: string;
+  name: string;
+  icon: string;
+  hint: string;
+}
+
+export const BADGES: Badge[] = [
+  { id: 'legend', name: 'Legend Finder', icon: '1f4a0', hint: 'Find a Legendary item' },
+  { id: 'shiny', name: 'Shiny', icon: '2728', hint: 'Find a shiny' },
+  { id: 'slayer', name: 'Golem Slayer', icon: '1f47e', hint: 'Beat 10 golems' },
+  { id: 'collector', name: 'Collector', icon: '1f4d6', hint: 'Complete a zone collection' },
+  { id: 'streak', name: 'Dedicated', icon: '1f525', hint: 'Reach a 7 day streak' },
+  { id: 'explorer', name: 'Explorer', icon: '1f30c', hint: 'Reach the Space Dump' },
+];

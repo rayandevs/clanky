@@ -173,7 +173,13 @@ Clanky's own game. Press **🔧 Dig** and Clanky digs through the scrap for some
 
 - **Loot**: 44 items across 4 zones, from 🔩 Rusty Bolt (Common) to ☄️ Comet Shard (Legendary). 1 in 150 finds is ✨ shiny and worth 5×.
 - **Progress**: every find gives game XP. Levels unlock new zones (Junk City at 10, Robot Graveyard at 25, Space Dump at 50) and pay credits.
-- **Shop**: spend credits on tools that raise luck, XP and the chance of a double find.
+- **Shop** with six sections:
+  - **Black Market**: 3 personal deals a day and a hot item that sells for 3×
+  - **Upgrades**: Turbo Motor, Metal Detector, Haggler, Golem Armor (10 levels each)
+  - **Boosts**: Lucky Charm, XP Battery, Golem Bait
+  - **Crates**: Rusty, Golden, Cosmic, with odds shown
+  - **Tools**: better luck, XP and double finds
+  - **Cosmetics**: profile themes and titles. Badges are earned by playing.
 - **Events**: sometimes a 👾 Scrap Golem (fight or run) or a 📦 Mystery Crate shows up.
 - **Streaks**: the first dig of each day gives a bonus that grows with your streak.
 - **Leaderboards**: `/salvage top` for this server or the whole world. Progress is global.

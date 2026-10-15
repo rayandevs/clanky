@@ -1,15 +1,31 @@
-import { MessageFlags, SlashCommandBuilder, type ButtonInteraction, type ChatInputCommandInteraction, type AnySelectMenuInteraction } from 'discord.js';
+import { ButtonStyle, MessageFlags, SlashCommandBuilder, type ButtonInteraction, type ChatInputCommandInteraction, type AnySelectMenuInteraction } from 'discord.js';
 import { everywhere } from '../../core/builders.js';
 import { components, slashCommand, type BotModuleDefinition, type Context } from '../../core/types.js';
 import type { GameEventType } from '../../database/models/index.js';
-import { TOOL_BY_ID, ZONE_BY_ID } from '../../games/salvage/data.js';
+import { BOOST_BY_ID, THEME_BY_ID, TITLE_BY_ID, TOOL_BY_ID, UPGRADE_BY_ID, ZONE_BY_ID, type BoostId, type CrateId, type UpgradeId } from '../../games/salvage/data.js';
 import { salvage, zoneOf } from '../../services/SalvageService.js';
 import { timestamp } from '../../core/time.js';
-import { notice as noticeBox } from '../../ui/components.js';
+import { button, notice as noticeBox } from '../../ui/components.js';
 import { emoji } from '../../ui/emoji.js';
 import { reply } from '../../ui/respond.js';
-import { bagView, collectionView, cooldownText, eventView, findView, messageView, profileView, shopView, topView, type View } from './views.js';
+import {
+  SHOP_TABS,
+  bagView,
+  collectionView,
+  cooldownText,
+  cosmeticConfirmView,
+  eventView,
+  findView,
+  messageView,
+  profileView,
+  shopView,
+  svid,
+  topView,
+  type ShopTab,
+  type View,
+} from './views.js';
 
+const asTab = (value?: string): ShopTab => (value && value in SHOP_TABS ? (value as ShopTab) : 'market');
 const notice = (message: string) => ({ components: [noticeBox('success', message)] });
 
 type AnyCtx = Context<ChatInputCommandInteraction | ButtonInteraction | AnySelectMenuInteraction>;
@@ -44,7 +60,7 @@ const salvageCommand = slashCommand({
       .setDescription('Dig through scrap for loot')
       .addSubcommand((s) => s.setName('dig').setDescription('Dig for loot'))
       .addSubcommand((s) => s.setName('bag').setDescription('See and sell your loot'))
-      .addSubcommand((s) => s.setName('shop').setDescription('Buy better tools'))
+      .addSubcommand((s) => s.setName('shop').setDescription('Deals, upgrades, boosts, crates and cosmetics'))
       .addSubcommand((s) =>
         s
           .setName('profile')
@@ -73,7 +89,7 @@ const salvageCommand = slashCommand({
       case 'bag':
         return send(bagView(await salvage.get(me), me, accent));
       case 'shop':
-        return send(shopView(await salvage.get(me), me, accent));
+        return send(shopView(await salvage.get(me), me, accent, 'market'));
       case 'collection': {
         const player = await salvage.get(me);
         return send(collectionView(player, me, zoneOf(player).id, accent));
@@ -144,7 +160,7 @@ const salvageComponents = components({
         return show(bagView(result.player, owner, accent, note));
       }
       case 'shop':
-        return show(shopView(await salvage.get(owner), owner, accent));
+        return show(shopView(await salvage.get(owner), owner, accent, asTab(args[0])));
       case 'buy': {
         const tool = TOOL_BY_ID.get(args[0] ?? '');
         const result = await salvage.buyTool(owner, args[0] ?? '');
@@ -155,7 +171,56 @@ const salvageComponents = components({
         const note = result.bought
           ? `${emoji('party')} You bought the ${tool!.emoji} **${tool!.name}**! It's equipped.`
           : `${emoji('success')} Equipped the ${tool!.emoji} **${tool!.name}**.`;
-        return show(shopView(result.player, owner, accent, note));
+        return show(shopView(result.player, owner, accent, 'tools', note));
+      }
+      case 'up': {
+        const result = await salvage.buyUpgrade(owner, args[0] as UpgradeId);
+        if (!result.ok) return reply(interaction, 'warning', result.reason === 'max' ? "That's already maxed out." : "You don't have enough credits yet.");
+        const up = UPGRADE_BY_ID.get(args[0] as UpgradeId)!;
+        return show(shopView(result.player, owner, accent, 'upgrades', `${emoji('success')} ${up.emoji} **${up.name}** is now level **${result.level}**.`));
+      }
+      case 'boost': {
+        const result = await salvage.buyBoost(owner, args[0] as BoostId);
+        if (!result.ok) return reply(interaction, 'warning', result.reason === 'full' ? "You can't stack any more of that." : "You don't have enough credits yet.");
+        const boost = BOOST_BY_ID.get(args[0] as BoostId)!;
+        return show(shopView(result.player, owner, accent, 'boosts', `${emoji('success')} ${boost.emoji} **${boost.name}** is active.`));
+      }
+      case 'crate': {
+        const result = await salvage.openCrate(owner, args[0] as CrateId);
+        if (!result.ok) return reply(interaction, 'warning', "You don't have enough credits yet.");
+        const again = button({
+          id: svid('crate', owner, result.crate.id),
+          label: `Open another · ${result.crate.price.toLocaleString()}`,
+          emoji: 'crate',
+          style: ButtonStyle.Success,
+          disabled: result.player.credits < result.crate.price,
+        });
+        return showDeferred(() => findView(result, owner, accent, `${result.crate.emoji} **You opened a ${result.crate.name}!**`, again));
+      }
+      case 'deal': {
+        const result = await salvage.buyDeal(owner, Number(args[0]));
+        if (!result.ok) {
+          const why = {
+            sold: 'You already bought that today. New deals tomorrow!',
+            credits: "You don't have enough credits yet.",
+            full: "You can't stack any more of that.",
+            unknown: "That deal doesn't exist.",
+          }[result.reason];
+          return reply(interaction, 'warning', why);
+        }
+        if (result.grant) {
+          const grant = result.grant;
+          const label = result.deal.kind === 'crate' ? `${emoji('crate')} **Black Market crate opened!**` : `${emoji('success')} **Bought from the Black Market!**`;
+          return showDeferred(() => findView(grant, owner, accent, label));
+        }
+        return show(shopView(result.player, owner, accent, 'market', `${emoji('success')} Deal bought. Your boost is active.`));
+      }
+      case 'cosbuy': {
+        const [kind, id] = args as ['theme' | 'title', string];
+        const result = await salvage.buyCosmetic(owner, kind, id);
+        if (!result.ok) return reply(interaction, 'warning', result.reason);
+        const name = (kind === 'theme' ? THEME_BY_ID.get(id) : TITLE_BY_ID.get(id))!.name;
+        return show(shopView(result.player, owner, accent, 'cosmetics', `${emoji('party')} You unlocked **${name}**! It's equipped. Check ${ctx.client.cmd('salvage', 'profile')}.`));
       }
       case 'profile':
         return showDeferred(async () => profileView(await salvage.get(owner), interaction.user, owner, accent, guildIdOf(ctx)));
@@ -170,7 +235,7 @@ const salvageComponents = components({
       }
     }
   },
-  select: async (ctx, [action, owner]) => {
+  select: async (ctx, [action, owner, ...args]) => {
     const { interaction, accent } = ctx;
     if (interaction.user.id !== owner) return reply(interaction, 'info', `This isn't yours. Start your own with ${ctx.client.cmd('salvage', 'dig')}.`);
     const value = interaction.values[0] ?? '';
@@ -186,6 +251,24 @@ const salvageComponents = components({
         return interaction.followUp({ components: [noticeBox('warning', `Reach level **${zone?.level ?? '?'}** to travel there.`)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
       }
       return interaction.followUp({ ...notice(`You traveled to ${zone.emoji} **${zone.name}**. Loot here is worth ×${zone.valueMultiplier}!`), flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+    }
+    if (action === 'tab') {
+      return interaction.update({ ...shopView(await salvage.get(owner), owner, accent, asTab(value)), attachments: [] });
+    }
+    if (action === 'cos') {
+      const kind = args[0] === 'title' ? 'title' : 'theme';
+      const player = await salvage.get(owner);
+      const owned = kind === 'theme' ? (player.ownedThemes ?? ['hazard']) : (player.ownedTitles ?? ['rookie']);
+      if (owned.includes(value)) {
+        const result = await salvage.buyCosmetic(owner, kind, value);
+        const name = (kind === 'theme' ? THEME_BY_ID.get(value) : TITLE_BY_ID.get(value))?.name ?? value;
+        return interaction.update({ ...shopView(result.ok ? result.player : player, owner, accent, 'cosmetics', `${emoji('success')} Equipped **${name}**.`), attachments: [] });
+      }
+      const locked = salvage.cosmeticLocked(player, kind, value);
+      // Re-render so the menu snaps back to what's equipped.
+      await interaction.update({ ...(locked ? shopView(player, owner, accent, 'cosmetics') : cosmeticConfirmView(player, owner, accent, kind, value)), attachments: [] });
+      if (locked) return interaction.followUp({ components: [noticeBox('warning', locked)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+      return;
     }
     if (action === 'col') {
       return interaction.update({ ...collectionView(await salvage.get(owner), owner, value, accent), attachments: [] });

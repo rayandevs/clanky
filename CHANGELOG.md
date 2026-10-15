@@ -2,6 +2,22 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## [0.1.0-beta.5] — 2026-10-15
+
+### Added
+- **Shop sections** (pick from a menu): Black Market, Upgrades, Boosts, Crates, Tools, Cosmetics
+- **Black Market**: 3 personal deals a day (boost 40% off, crate 30% off, a collection item) plus a daily **hot item** that sells for 3×
+- **Upgrades** (10 levels each): Turbo Motor (cooldown), Metal Detector (shiny chance), Haggler (sell bonus), Golem Armor (golem win chance)
+- **Boosts**: Lucky Charm (+50% luck, 25 digs), XP Battery (2× XP, 25 digs), Golem Bait (golem on next dig). Active boosts show under the find card.
+- **Crates**: Rusty, Golden and Cosmic with odds shown, plus an "Open another" button
+- **Cosmetics**: 6 profile themes and 7 titles (some unlock through play), with a confirm step before buying
+- **Badges** earned by playing, shown next to your name on the profile card
+
+### Changed
+- Shop button opens the Black Market
+- Bag shows the hot item and includes Haggler and hot-item prices
+- All purchases are atomic, so double-clicking can't charge twice
+
 ## [0.1.0-beta.4] — 2026-10-15
 
 ### Changed

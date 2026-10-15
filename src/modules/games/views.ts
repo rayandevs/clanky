@@ -12,12 +12,48 @@ import {
 import { cid } from '../../core/customId.js';
 import { timestamp } from '../../core/time.js';
 import type { GamePlayerRecord } from '../../database/models/index.js';
-import { BALANCE, ITEMS, RARITY, TOOLS, ZONES, ZONE_BY_ID, gameLevel, itemsInZone, itemValue, type Zone } from '../../games/salvage/data.js';
+import {
+  BADGES,
+  BALANCE,
+  BOOSTS,
+  CRATES,
+  ITEMS,
+  MARKET,
+  RARITY,
+  THEMES,
+  THEME_BY_ID,
+  TITLES,
+  TITLE_BY_ID,
+  TOOLS,
+  UPGRADES,
+  ZONES,
+  ZONE_BY_ID,
+  gameLevel,
+  itemsInZone,
+  itemValue,
+  upgradeCost,
+  type Zone,
+} from '../../games/salvage/data.js';
 import { renderFindCard } from '../../render/findCard.js';
 import { iconCode } from '../../render/icons.js';
 import { renderLeaderboard } from '../../render/leaderboard.js';
 import { renderProfileCard } from '../../render/profileCard.js';
-import { salvage, toolOf, zoneOf, findValue, type Find, type GrantResult } from '../../services/SalvageService.js';
+import {
+  boostsOf,
+  digCooldown,
+  findValue,
+  golemWinChance,
+  hotItem,
+  nextReset,
+  salvage,
+  sellBonus,
+  shinyOdds,
+  toolOf,
+  upgradeLevel,
+  zoneOf,
+  type Find,
+  type GrantResult,
+} from '../../services/SalvageService.js';
 import { button, divider, panel, row, text } from '../../ui/components.js';
 import { emoji } from '../../ui/emoji.js';
 
@@ -38,7 +74,7 @@ export function navRow(owner: string, current?: 'bag' | 'shop' | 'profile' | 'co
   return row(
     button({ id: svid('dig', owner), label: 'Dig', emoji: 'dig', style: ButtonStyle.Primary }),
     button({ id: svid('bag', owner), label: 'Bag', emoji: 'bag', disabled: current === 'bag' }),
-    button({ id: svid('shop', owner), label: 'Shop', emoji: 'shop', disabled: current === 'shop' }),
+    button({ id: svid('shop', owner, 'market'), label: 'Shop', emoji: 'shop' }),
     button({ id: svid('profile', owner), label: 'Profile', emoji: 'user', disabled: current === 'profile' }),
   );
 }
@@ -64,7 +100,7 @@ async function card(find: Find, player: GamePlayerRecord, xp: number, accent: nu
 }
 
 /** Result of a dig, crate or golem win. */
-export async function findView(result: GrantResult, owner: string, accent: number, intro?: string): Promise<View> {
+export async function findView(result: GrantResult, owner: string, accent: number, intro?: string, again?: ButtonBuilder): Promise<View> {
   const [main, ...extra] = [...result.finds].sort((a, b) => findValue(b) - findValue(a));
   const image = await card(main!, result.player, result.xp, accent);
 
@@ -83,9 +119,19 @@ export async function findView(result: GrantResult, owner: string, accent: numbe
   const container = new ContainerBuilder()
     .setAccentColor(RARITY[main!.item.rarity].color)
     .addMediaGalleryComponents((g) => g.addItems((i) => i.setURL('attachment://find.png').setDescription(`Found: ${main!.item.name}`)));
+  const active = boostLine(result.player);
+  if (active) lines.push(`-# ${active}`);
   if (lines.length) container.addTextDisplayComponents(text(lines.join('\n')));
+  if (again) container.addActionRowComponents(row(again));
   container.addActionRowComponents(navRow(owner)).addTextDisplayComponents(footer(result.player));
   return { components: [container], files: [new AttachmentBuilder(image, { name: 'find.png' })] };
+}
+
+/** "🍀 Lucky Charm · 12 left" for active boosts, or null. */
+function boostLine(player: GamePlayerRecord): string | null {
+  const boosts = boostsOf(player);
+  const parts = BOOSTS.filter((b) => boosts[b.id] > 0).map((b) => `${b.emoji} ${b.name} · ${boosts[b.id]} left`);
+  return parts.length ? parts.join('  ·  ') : null;
 }
 
 const EVENTS = {
@@ -135,10 +181,11 @@ export function messageView(player: GamePlayerRecord, owner: string, accent: num
 
 export function bagView(player: GamePlayerRecord, owner: string, accent: number, note?: string): View {
   const bag = salvage.bag(player);
+  const hot = hotItem();
   const total = bag.reduce((sum, e) => sum + e.value, 0);
   const lines = bag
     .slice(0, 15)
-    .map((e) => `\`${String(e.count).padStart(3)}×\` ${findName(e)} · ${RARITY[e.item.rarity].name} · ${credits(e.value)}`);
+    .map((e) => `\`${String(e.count).padStart(3)}×\` ${findName(e)} · ${credits(e.value)}${e.item.id === hot.id ? ` · ${emoji('streak')} Hot` : ''}`);
   if (bag.length > 15) lines.push(`-# …and ${bag.length - 15} more`);
 
   const container = panel({
@@ -165,35 +212,210 @@ export function bagView(player: GamePlayerRecord, owner: string, accent: number,
 
 /* ─────────────── Shop ─────────────── */
 
-const pct = (value: number) => `${Math.round(value * 100)}%`;
+export const SHOP_TABS = {
+  market: { label: 'Black Market', emoji: '🕶️', description: 'Daily deals' },
+  upgrades: { label: 'Upgrades', emoji: '⚡', description: 'Permanent boosts' },
+  boosts: { label: 'Boosts', emoji: '🍀', description: 'Power-ups for your next digs' },
+  crates: { label: 'Crates', emoji: '📦', description: 'Guaranteed good loot' },
+  tools: { label: 'Tools', emoji: '⛏️', description: 'Better luck and XP' },
+  cosmetics: { label: 'Cosmetics', emoji: '🎨', description: 'Themes, titles and badges' },
+} as const;
+export type ShopTab = keyof typeof SHOP_TABS;
 
-export function shopView(player: GamePlayerRecord, owner: string, accent: number, note?: string): View {
-  const container = panel({
-    title: 'Tool shop',
-    emoji: 'shop',
-    description: `Better tools find rarer loot. You have ${credits(player.credits)} credits.`,
-    accent,
-  });
+const pct = (value: number) => `${Math.round(value * 100)}%`;
+const section = (content: string, action: ButtonBuilder) => new SectionBuilder().addTextDisplayComponents(text(content)).setButtonAccessory(action);
+
+function shopFrame(player: GamePlayerRecord, owner: string, accent: number, tab: ShopTab, note?: string) {
+  const info = SHOP_TABS[tab];
+  const container = panel({ title: `Shop · ${info.label}`, emoji: 'shop', description: `You have ${credits(player.credits)} credits`, accent });
+  container.addActionRowComponents(
+    row(
+      new StringSelectMenuBuilder()
+        .setCustomId(svid('tab', owner))
+        .setPlaceholder('Shop sections')
+        .addOptions(
+          (Object.keys(SHOP_TABS) as ShopTab[]).map((id) => ({
+            label: SHOP_TABS[id].label,
+            value: id,
+            description: SHOP_TABS[id].description,
+            emoji: { name: SHOP_TABS[id].emoji },
+            default: id === tab,
+          })),
+        ),
+    ),
+  );
   if (note) container.addTextDisplayComponents(text(note));
   container.addSeparatorComponents(divider());
+  return container;
+}
 
-  for (const tool of TOOLS) {
-    const owned = player.ownedTools.includes(tool.id);
-    const equipped = player.tool === tool.id;
-    const perks =
-      tool.luck === 1 ? 'The basics. Everyone starts here.' : `+${pct(tool.luck - 1)} luck · +${pct(tool.xpBoost - 1)} XP · ${pct(tool.doubleChance)} double finds`;
-    const price = tool.price ? `${credits(tool.price)}` : '`Free`';
-    const lock = !owned && player.level < tool.level ? ` · ${emoji('locked')} Level ${tool.level}` : '';
-
-    let action: ButtonBuilder;
-    if (equipped) action = button({ id: svid('buy', owner, tool.id), label: 'Equipped', emoji: 'success', disabled: true });
-    else if (owned) action = button({ id: svid('buy', owner, tool.id), label: 'Equip', style: ButtonStyle.Primary });
-    else action = button({ id: svid('buy', owner, tool.id), label: 'Buy', style: ButtonStyle.Success, disabled: player.level < tool.level || player.credits < tool.price });
-
-    container.addSectionComponents(new SectionBuilder().addTextDisplayComponents(text(`${tool.emoji} **${tool.name}** · ${price}${lock}\n-# ${perks}`)).setButtonAccessory(action));
-  }
+function shopEnd(container: ContainerBuilder, player: GamePlayerRecord, owner: string): View {
   container.addSeparatorComponents(divider()).addActionRowComponents(navRow(owner, 'shop')).addTextDisplayComponents(footer(player));
   return { components: [container], files: [] };
+}
+
+export function shopView(player: GamePlayerRecord, owner: string, accent: number, tab: ShopTab = 'market', note?: string): View {
+  const container = shopFrame(player, owner, accent, tab, note);
+  const buy = (id: string, label: string, ok: boolean, style = ButtonStyle.Success) => button({ id, label, style, disabled: !ok });
+
+  switch (tab) {
+    case 'tools':
+      for (const tool of TOOLS) {
+        const owned = player.ownedTools.includes(tool.id);
+        const perks = tool.luck === 1 ? 'The basics. Everyone starts here.' : `+${pct(tool.luck - 1)} luck · +${pct(tool.xpBoost - 1)} XP · ${pct(tool.doubleChance)} double finds`;
+        const price = tool.price ? credits(tool.price) : '`Free`';
+        const lock = !owned && player.level < tool.level ? ` · Level ${tool.level}` : '';
+        const id = svid('buy', owner, tool.id);
+        const action =
+          player.tool === tool.id
+            ? button({ id, label: 'Equipped', disabled: true })
+            : owned
+              ? button({ id, label: 'Equip', style: ButtonStyle.Primary })
+              : buy(id, 'Buy', player.level >= tool.level && player.credits >= tool.price);
+        container.addSectionComponents(section(`${tool.emoji} **${tool.name}** · ${price}${lock}\n-# ${perks}`, action));
+      }
+      break;
+
+    case 'upgrades':
+      for (const up of UPGRADES) {
+        const level = upgradeLevel(player, up.id);
+        const max = level >= up.maxLevel;
+        const cost = upgradeCost(up, level);
+        const now = upgradeEffect(player, up.id, level);
+        const next = max ? null : upgradeEffect(player, up.id, level + 1);
+        const line = `${up.emoji} **${up.name}** · Lv ${level}/${up.maxLevel}${max ? '' : ` · ${credits(cost)}`}\n-# ${up.description}: ${now}${next ? ` → ${next}` : ' (max)'}`;
+        container.addSectionComponents(section(line, max ? button({ id: svid('up', owner, up.id), label: 'Maxed', disabled: true }) : buy(svid('up', owner, up.id), 'Upgrade', player.credits >= cost)));
+      }
+      break;
+
+    case 'boosts': {
+      const active = boostsOf(player);
+      for (const boost of BOOSTS) {
+        const full = active[boost.id] + boost.amount > boost.cap;
+        const left = active[boost.id] ? ` · **${active[boost.id]}** left` : '';
+        const amount = boost.id === 'bait' ? '1 use' : `${boost.amount} digs`;
+        container.addSectionComponents(
+          section(`${boost.emoji} **${boost.name}** · ${credits(boost.price)}${left}\n-# ${boost.description} · ${amount}`, buy(svid('boost', owner, boost.id), full ? 'Full' : 'Buy', !full && player.credits >= boost.price)),
+        );
+      }
+      container.addTextDisplayComponents(text('-# Boosts are used up as you dig. Buy more to stack them.'));
+      break;
+    }
+
+    case 'market': {
+      const hot = hotItem();
+      const bought = salvage.boughtToday(player);
+      container.addTextDisplayComponents(
+        text(`${emoji('streak')} **Hot item:** ${hot.emoji} ${hot.name} sells for **${MARKET.hotMultiplier}×** today\n-# New deals ${timestamp(nextReset(), 'R')}`),
+      );
+      for (const deal of salvage.deals(player)) {
+        const sold = bought.includes(deal.slot);
+        let line: string;
+        if (deal.kind === 'boost') {
+          const b = BOOSTS.find((x) => x.id === deal.id)!;
+          line = `${b.emoji} **${b.name}** · ~~${n(deal.was)}~~ ${credits(deal.price)}\n-# ${b.description} · ${Math.round(MARKET.boostDiscount * 100)}% off today`;
+        } else if (deal.kind === 'crate') {
+          const c = CRATES.find((x) => x.id === deal.id)!;
+          line = `${c.emoji} **${c.name}** · ~~${n(deal.was)}~~ ${credits(deal.price)}\n-# Opens right away · ${Math.round(MARKET.crateDiscount * 100)}% off today`;
+        } else {
+          const isNew = !(player.found?.[deal.item.id] ?? 0);
+          line = `${deal.item.emoji} **${deal.item.name}** · ${credits(deal.price)}\n-# ${RARITY[deal.item.rarity].name}${isNew ? ' · New for your collection!' : ''}`;
+        }
+        container.addSectionComponents(section(line, sold ? button({ id: svid('deal', owner, deal.slot), label: 'Sold out', disabled: true }) : buy(svid('deal', owner, deal.slot), 'Buy', player.credits >= deal.price)));
+      }
+      break;
+    }
+
+    case 'crates':
+      for (const crate of CRATES) {
+        const odds = (Object.entries(crate.odds) as Array<[keyof typeof RARITY, number]>).map(([r, c]) => `${RARITY[r].name} ${c}%`).join(' · ');
+        container.addSectionComponents(section(`${crate.emoji} **${crate.name}** · ${credits(crate.price)}\n-# ${odds}`, buy(svid('crate', owner, crate.id), 'Open', player.credits >= crate.price)));
+      }
+      container.addTextDisplayComponents(text(`-# Loot comes from your current zone: ${zoneOf(player).emoji} ${zoneOf(player).name}`));
+      break;
+
+    case 'cosmetics':
+      cosmetics(container, player, owner);
+      break;
+  }
+  return shopEnd(container, player, owner);
+}
+
+function upgradeEffect(player: GamePlayerRecord, id: (typeof UPGRADES)[number]['id'], level: number): string {
+  const sim = { ...player, upgrades: { ...(player.upgrades ?? {}), [id]: level } };
+  switch (id) {
+    case 'turbo':
+      return `${digCooldown(sim).toFixed(1)}s`;
+    case 'detector':
+      return `1 in ${shinyOdds(sim)}`;
+    case 'haggler':
+      return `+${pct(sellBonus(sim) - 1)}`;
+    case 'armor':
+      return pct(golemWinChance(sim));
+  }
+}
+
+function cosmetics(container: ContainerBuilder, player: GamePlayerRecord, owner: string) {
+  const ownedThemes = player.ownedThemes ?? ['hazard'];
+  const ownedTitles = player.ownedTitles ?? ['rookie'];
+  const state = (owned: boolean, equipped: boolean, price: number, lock: string | null) =>
+    equipped ? 'Equipped' : owned ? 'Owned' : lock ? `🔒 ${lock.replace(/\*\*/g, '').replace(/^Reach level (\d+) first\./, 'Level $1')}` : price ? `${n(price)} credits` : 'Free';
+
+  container.addTextDisplayComponents(text('**Profile themes** change the stripe and background of your profile card.'));
+  container.addActionRowComponents(
+    row(
+      new StringSelectMenuBuilder()
+        .setCustomId(svid('cos', owner, 'theme'))
+        .setPlaceholder('Pick a theme')
+        .addOptions(
+          THEMES.map((t) => ({
+            label: t.name,
+            value: t.id,
+            emoji: { name: t.emoji },
+            description: state(ownedThemes.includes(t.id), player.theme === t.id, t.price, ownedThemes.includes(t.id) ? null : salvage.cosmeticLocked(player, 'theme', t.id)).slice(0, 100),
+            default: player.theme === t.id,
+          })),
+        ),
+    ),
+  );
+  container.addTextDisplayComponents(text('**Titles** show above your name.'));
+  container.addActionRowComponents(
+    row(
+      new StringSelectMenuBuilder()
+        .setCustomId(svid('cos', owner, 'title'))
+        .setPlaceholder('Pick a title')
+        .addOptions(
+          TITLES.map((t) => {
+            const owned = ownedTitles.includes(t.id);
+            const lock = owned ? null : salvage.cosmeticLocked(player, 'title', t.id);
+            return {
+              label: t.name,
+              value: t.id,
+              description: (lock && t.hint ? `🔒 ${t.hint}` : state(owned, player.title === t.id, t.price, lock)).slice(0, 100),
+              default: player.title === t.id,
+            };
+          }),
+        ),
+    ),
+  );
+  const earned = new Set(salvage.badges(player).map((b) => b.id));
+  const badges = BADGES.map((b) => (earned.has(b.id) ? `${String.fromCodePoint(...b.icon.split('-').map((c) => parseInt(c, 16)))} **${b.name}**` : `${emoji('locked')} ${b.hint}`));
+  container.addSeparatorComponents(divider()).addTextDisplayComponents(text(`**Badges** · earned by playing, shown on your card\n${badges.join('\n')}`));
+}
+
+/** Confirm screen before buying a cosmetic. */
+export function cosmeticConfirmView(player: GamePlayerRecord, owner: string, accent: number, kind: 'theme' | 'title', id: string): View {
+  const entry = kind === 'theme' ? THEME_BY_ID.get(id)! : TITLE_BY_ID.get(id)!;
+  const container = shopFrame(player, owner, accent, 'cosmetics');
+  container
+    .addTextDisplayComponents(text(`Buy the **${entry.name}** ${kind} for ${credits(entry.price)}?`))
+    .addActionRowComponents(
+      row(
+        button({ id: svid('cosbuy', owner, kind, id), label: 'Buy it', style: ButtonStyle.Success, disabled: player.credits < entry.price }),
+        button({ id: svid('shop', owner, 'cosmetics'), label: 'Cancel' }),
+      ),
+    );
+  return shopEnd(container, player, owner);
 }
 
 /* ─────────────── Profile ─────────────── */
@@ -220,6 +442,9 @@ export async function profileView(player: GamePlayerRecord, user: User, viewer: 
     tool: { name: tool.name, icon: iconCode(tool.emoji) },
     bestFind: best ? { name: `${player.bestFind!.shiny ? 'Shiny ' : ''}${best.name}`, icon: best.icon, color: RARITY[best.rarity].color } : null,
     accent,
+    title: (TITLE_BY_ID.get(player.title) ?? TITLES[0]!).name,
+    theme: THEME_BY_ID.get(player.theme) ?? THEMES[0]!,
+    badges: salvage.badges(player).map((b) => b.icon),
   });
 
   const container = new ContainerBuilder()

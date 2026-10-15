@@ -17,6 +17,12 @@ export interface ProfileCardData {
   tool: { name: string; icon: string };
   bestFind: { name: string; icon: string; color: number } | null;
   accent: number;
+  /** Shown above the name, e.g. "Junk King" */
+  title: string;
+  /** Profile theme (cosmetic) */
+  theme: { stripe: number | null; background: string };
+  /** Twemoji codes of earned badges */
+  badges: string[];
 }
 
 const WIDTH = 1000;
@@ -47,7 +53,7 @@ function hazardStripe(ctx: SKRSContext2D, color: string) {
 }
 
 async function stat(ctx: SKRSContext2D, x: number, y: number, w: number, icon: string, value: string, label: string) {
-  fillRoundRect(ctx, x, y, w, 118, 20, palette.surface);
+  fillRoundRect(ctx, x, y, w, 118, 20, 'rgba(255,255,255,0.045)');
   const image = await loadIcon(icon);
   if (image) ctx.drawImage(image, x + 20, y + 20, 36, 36);
   ctx.textAlign = 'left';
@@ -62,7 +68,7 @@ async function stat(ctx: SKRSContext2D, x: number, y: number, w: number, icon: s
 }
 
 async function chip(ctx: SKRSContext2D, x: number, y: number, w: number, icon: string, label: string, value: string, color: string) {
-  fillRoundRect(ctx, x, y, w, 64, 18, palette.surface);
+  fillRoundRect(ctx, x, y, w, 64, 18, 'rgba(255,255,255,0.045)');
   const image = await loadIcon(icon);
   if (image) ctx.drawImage(image, x + 16, y + 14, 36, 36);
   ctx.textAlign = 'left';
@@ -80,9 +86,9 @@ export async function renderProfileCard(data: ProfileCardData): Promise<Buffer> 
   ensureFonts();
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext('2d');
-  const accent = hex(data.accent);
+  const accent = hex(data.theme.stripe ?? data.accent);
 
-  fillRoundRect(ctx, 0, 0, WIDTH, HEIGHT, 28, palette.background);
+  fillRoundRect(ctx, 0, 0, WIDTH, HEIGHT, 28, data.theme.background);
   roundRect(ctx, 1, 1, WIDTH - 2, HEIGHT - 2, 28);
   ctx.strokeStyle = palette.border;
   ctx.lineWidth = 2;
@@ -101,10 +107,19 @@ export async function renderProfileCard(data: ProfileCardData): Promise<Buffer> 
   ctx.textBaseline = 'alphabetic';
   ctx.font = font('SemiBold', 15);
   ctx.fillStyle = palette.muted;
-  ctx.fillText('SALVAGER', 160, 74);
+  ctx.fillText(data.title.toUpperCase(), 160, 74);
   ctx.font = font('Bold', 38);
   ctx.fillStyle = palette.text;
-  ctx.fillText(fitText(ctx, data.displayName, 560), 158, 116);
+  const name = fitText(ctx, data.displayName, data.badges.length ? 420 : 560);
+  ctx.fillText(name, 158, 116);
+
+  // Badges sit right after the name
+  let bx = 158 + ctx.measureText(name).width + 18;
+  for (const code of data.badges.slice(0, 6)) {
+    const icon = await loadIcon(code);
+    if (icon) ctx.drawImage(icon, bx, 88, 30, 30);
+    bx += 38;
+  }
 
   ctx.textAlign = 'right';
   ctx.font = font('SemiBold', 15);
