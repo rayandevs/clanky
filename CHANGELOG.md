@@ -2,6 +2,17 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## [0.1.0-beta.2] — 2026-10-15
+
+### Added
+- Image rank card for `/rank`: flat design with avatar, rank, level and XP bar in the server's accent color
+- Image leaderboard for `/leaderboard`: 10 per page, gold/silver/bronze top 3, your row highlighted, your rank in the footer
+- **Find me** button on the leaderboard that jumps to your page
+- `src/render/` canvas renderer (`@napi-rs/canvas`) with bundled Poppins fonts (`assets/fonts`, SIL OFL)
+
+### Changed
+- Leaderboard page buttons now re-render the image in place
+
 ## [0.1.0-beta.1] — 2026-10-14 · "Spark"
 
 First public beta.

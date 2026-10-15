@@ -1,6 +1,6 @@
 {
   "name": "clanky",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -22,6 +22,7 @@
   "license": "MIT",
   "description": "Clanky — a multipurpose Discord bot for community management, moderation and engagement.",
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.11",
     "discord.js": "^14.27.0",
     "dotenv": "^18.0.7",
     "mongoose": "^9.11.2",

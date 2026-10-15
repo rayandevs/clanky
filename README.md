@@ -25,7 +25,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 | 👋 **Welcome** | Welcome and leave messages with placeholders, avatars and **auto roles** (works with membership screening). |
 | 🎭 **Role panels** | Members press **Choose roles** and pick from a select menu that already shows their current roles. "Pick any" or "Pick one" modes. |
 | 💡 **Suggestions** | Members submit ideas in a modal. Others vote with buttons. Reviewers approve, deny or mark them implemented, and the author gets a DM. Discussion threads are optional. |
-| ⭐ **Leveling** | XP for chatting with cooldowns, level-up messages, **role rewards**, `/rank`, a paged `/leaderboard` and admin XP tools. |
+| ⭐ **Leveling** | XP for chatting with cooldowns, level-up messages, **role rewards**, an image rank card (`/rank`), a paged image `/leaderboard` with a Find me button and admin XP tools. |
 | ⏰ **Reminders** | `/remind me in:2h about:...` with snooze buttons. Works in DMs and as a user-installed app. |
 | 📊 **Polls** | `/poll` opens a modal and posts a **native Discord poll**. |
 | 📋 **Logging** | Deleted or edited messages, joins and leaves, role and nickname changes. Choose what to log and which channels to ignore. |
@@ -148,6 +148,7 @@ src/
 ├── settings/
 │   ├── schema.ts            # ⭐ Guild settings + user preferences schemas (single source of truth)
 │   └── registry.ts          # Module metadata for navigation
+├── render/                  # Image cards drawn with @napi-rs/canvas (rank card, leaderboard)
 ├── ui/
 │   ├── emojis.json          # ⭐ Every emoji Clanky uses
 │   ├── emoji.ts             # emoji('success') / componentEmoji('ticket')
@@ -159,6 +160,7 @@ src/
 │   ├── core/ settings/ moderation/ tickets/ roles/ suggestions/
 │   └── leveling/ reminders/ polls/ automod/ logging/ welcome/
 └── scripts/deploy-commands.ts
+assets/fonts/                # Poppins (SIL Open Font License) used by the image cards
 ```
 
 ## 😀 Custom emojis

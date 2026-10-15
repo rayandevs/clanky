@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.2',
+    date: '2026-10-15',
+    title: 'Rank cards 🖼️',
+    highlights: [
+      '`/rank` now shows an image rank card',
+      '`/leaderboard` is now an image, with page buttons',
+      'New **Find me** button jumps to your page',
+    ],
+  },
+  {
     version: '0.1.0-beta.1',
     date: '2026-10-14',
     title: 'First beta 🎉',
