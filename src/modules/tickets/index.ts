@@ -17,8 +17,9 @@ import { guildComponents, guildSlashCommand, type BotModuleDefinition } from '..
 import { TicketModel, type TicketRecord } from '../../database/models/index.js';
 import { notice, v2 } from '../../ui/components.js';
 import { reply, respond } from '../../ui/respond.js';
-import { ticketHeader, ticketPanel } from './render.js';
-import { closeTicket, createTicket, findTicket, isStaff, openTicketCount } from './service.js';
+import { publishTicketPanel } from './panels.js';
+import { ticketHeader } from './render.js';
+import { closeTicket, createTicket, findTicket, isStaff, openTicketCount, ticketRouting } from './service.js';
 
 function closeModal(ticketId: number) {
   return new ModalBuilder()
@@ -38,7 +39,9 @@ const ticketCommand = guildSlashCommand({
     .addSubcommand((s) =>
       s
         .setName('panel')
-        .setDescription('Post the "Open a ticket" panel')
+        .setDescription('Post or update a ticket panel')
+        .addStringOption((o) => o.setName('panel').setDescription('Which configured panel to publish').setAutocomplete(true))
+        .addStringOption((o) => o.setName('mode').setDescription('Publish (or refresh) or update an existing panel').addChoices({ name: 'Publish or refresh', value: 'publish' }, { name: 'Update existing only', value: 'update' }))
         .addChannelOption((o) => o.setName('channel').setDescription('Where to post (default: here)').addChannelTypes(ChannelType.GuildText)),
     )
     .addSubcommand((s) =>
@@ -48,7 +51,17 @@ const ticketCommand = guildSlashCommand({
       s.setName('remove').setDescription('Remove someone from this ticket').addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true)),
     )
     .addSubcommand((s) => s.setName('close').setDescription('Close this ticket')),
-  execute: async ({ client, interaction, guild }) => {
+  autocomplete: async ({ interaction, guild }) => {
+    if (interaction.options.getFocused(true).name !== 'panel') return interaction.respond([]);
+    const query = interaction.options.getFocused().toLowerCase();
+    return interaction.respond(
+      guild.settings.tickets.panels
+        .filter((panel) => `${panel.title} ${panel.id}`.toLowerCase().includes(query))
+        .map((panel) => ({ name: panel.title.slice(0, 100), value: panel.id }))
+        .slice(0, 25),
+    );
+  },
+  execute: async ({ interaction, guild }) => {
     const sub = interaction.options.getSubcommand();
     const settings = guild.settings;
 
@@ -56,18 +69,20 @@ const ticketCommand = guildSlashCommand({
       if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild)) {
         return reply(interaction, 'error', 'You need **Manage Server** to post the panel.');
       }
-      if (!settings.tickets.parentId) {
-        return reply(interaction, 'warning', `Pick a Discord category for tickets first in ${client.cmd('settings')} → Tickets.`);
-      }
+      const panelId = interaction.options.getString('panel');
+      const panel = panelId ? settings.tickets.panels.find((item) => item.id === panelId) : settings.tickets.panels[0]!;
+      if (!panel) return reply(interaction, 'warning', 'That ticket panel is no longer configured. Choose an active panel.');
       const channel = (interaction.options.getChannel('channel') as TextChannel | null) ?? interaction.channel;
-      if (!channel?.isSendable()) return reply(interaction, 'error', "I can't post in that channel.");
-      await channel.send(v2(ticketPanel(settings)));
-      return reply(interaction, 'success', `Ticket panel posted in ${channel}.`);
+      if (!channel?.isSendable() || channel.type !== ChannelType.GuildText) return reply(interaction, 'error', "I can't post in that channel.");
+      const mode = interaction.options.getString('mode') as 'publish' | 'update' | null;
+      const result = await publishTicketPanel(channel, settings, panel, mode ?? 'publish');
+      if (result === 'missing') return reply(interaction, 'warning', 'There is no tracked panel message in that channel to update. Choose “Publish or refresh” to post one.');
+      return reply(interaction, 'success', `Ticket panel **${panel.title}** ${result} in ${channel}.`);
     }
 
     const ticket = await findTicket(interaction.channelId);
     if (!ticket) return reply(interaction, 'info', 'Use this inside a ticket channel.');
-    const staff = isStaff(interaction.member, settings);
+    const staff = isStaff(interaction.member, settings, ticket);
 
     if (sub === 'close') {
       if (!staff && interaction.user.id !== ticket.openerId) return reply(interaction, 'error', 'Only staff or the ticket owner can close it.');
@@ -94,7 +109,10 @@ const ticketComponents = guildComponents({
     const settings = guild.settings;
 
     if (action === 'open') {
-      if (!settings.tickets.parentId || !interaction.guild.channels.cache.has(settings.tickets.parentId)) {
+      const panel = id ? settings.tickets.panels.find((item) => item.id === id) : settings.tickets.panels[0]!;
+      if (!panel) return reply(interaction, 'warning', 'That ticket panel has been removed. Please use a current panel.');
+      const routing = ticketRouting(settings, panel);
+      if (!routing.parentId || !interaction.guild.channels.cache.has(routing.parentId)) {
         return reply(interaction, 'warning', "Tickets aren't fully set up yet. Please tell a staff member.");
       }
       const open = await openTicketCount(interaction.guildId, interaction.user.id);
@@ -102,7 +120,7 @@ const ticketComponents = guildComponents({
         return reply(interaction, 'info', `You already have **${open}** open ticket${open === 1 ? '' : 's'}. Please use ${open === 1 ? 'it' : 'those'} first.`);
       }
 
-      const modal = new ModalBuilder().setCustomId(cid('tk', 'create')).setTitle('Open a ticket');
+      const modal = new ModalBuilder().setCustomId(cid('tk', 'create', panel.id)).setTitle(panel.title.slice(0, 45));
       if (settings.tickets.categories.length) {
         modal.addLabelComponents(
           new LabelBuilder().setLabel('Category').setStringSelectMenuComponent(
@@ -113,11 +131,18 @@ const ticketComponents = guildComponents({
           ),
         );
       }
-      modal.addLabelComponents(
-        new LabelBuilder()
-          .setLabel('How can we help?')
-          .setTextInputComponent(new TextInputBuilder().setCustomId('topic').setStyle(TextInputStyle.Paragraph).setMinLength(5).setMaxLength(1000)),
-      );
+      for (const question of panel.questions) {
+        const input = new TextInputBuilder()
+          .setCustomId(question.id)
+          .setStyle(question.style === 'short' ? TextInputStyle.Short : TextInputStyle.Paragraph)
+          .setRequired(question.required)
+          .setMinLength(question.required ? question.minLength : 0)
+          .setMaxLength(question.maxLength);
+        if (question.placeholder) input.setPlaceholder(question.placeholder);
+        const label = new LabelBuilder().setLabel(question.label).setTextInputComponent(input);
+        if (question.description) label.setDescription(question.description);
+        modal.addLabelComponents(label);
+      }
       return interaction.showModal(modal);
     }
 
@@ -125,20 +150,19 @@ const ticketComponents = guildComponents({
     if (!ticket) return reply(interaction, 'info', 'This ticket is already closed.');
 
     if (action === 'claim') {
-      if (!isStaff(interaction.member, settings)) return reply(interaction, 'error', 'Only staff can claim tickets.');
+      if (!isStaff(interaction.member, settings, ticket)) return reply(interaction, 'error', 'Only staff can claim tickets.');
       const updated = await TicketModel.findOneAndUpdate(
         { _id: (ticket as TicketRecord & { _id: unknown })._id, claimedBy: null },
         { $set: { claimedBy: interaction.user.id } },
         { returnDocument: 'after' },
       ).lean<TicketRecord>();
       if (!updated) return reply(interaction, 'info', 'Someone already claimed this ticket.');
-      // The header is the second top-level component (after the ping line).
       await interaction.update({ components: [interaction.message.components[0]!, ticketHeader(updated, settings)] });
       return interaction.followUp(v2(notice('success', `${interaction.user} will help you with this ticket.`)));
     }
 
     if (action === 'close') {
-      if (!isStaff(interaction.member, settings) && interaction.user.id !== ticket.openerId) {
+      if (!isStaff(interaction.member, settings, ticket) && interaction.user.id !== ticket.openerId) {
         return reply(interaction, 'error', 'Only staff or the ticket owner can close it.');
       }
       return interaction.showModal(closeModal(ticket.ticketId));
@@ -149,12 +173,19 @@ const ticketComponents = guildComponents({
     const settings = guild.settings;
 
     if (action === 'create') {
+      const panel = settings.tickets.panels.find((item) => item.id === id);
+      if (!panel) return reply(interaction, 'warning', 'That ticket form has changed. Please reopen the latest ticket panel.');
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const topic = interaction.fields.getTextInputValue('topic').trim();
-      const category = settings.tickets.categories.length ? (interaction.fields.getStringSelectValues('category')[0] ?? null) : null;
+      const categoryValue = settings.tickets.categories.length ? (interaction.fields.getStringSelectValues('category')[0] ?? null) : null;
+      const category = settings.tickets.categories.find((item) => item.id === categoryValue)?.id ?? null;
+      const answers = panel.questions.map((question) => ({
+        questionId: question.id,
+        label: question.label,
+        answer: interaction.fields.getTextInputValue(question.id).trim(),
+      }));
       const open = await openTicketCount(interaction.guildId, interaction.user.id);
       if (open >= settings.tickets.maxOpenPerUser) return respond(interaction, notice('info', 'You already have an open ticket.'));
-      const { channel } = await createTicket(interaction.member as GuildMember, settings, topic, category);
+      const { channel } = await createTicket(interaction.member as GuildMember, settings, panel, category, answers);
       return respond(interaction, notice('success', `Your ticket is ready: ${channel}`));
     }
 

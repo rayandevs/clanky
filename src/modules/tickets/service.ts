@@ -12,7 +12,7 @@ import { createLogger } from '../../core/logger.js';
 import { timestamp } from '../../core/time.js';
 import { TicketModel, type TicketRecord } from '../../database/models/index.js';
 import { guilds } from '../../services/index.js';
-import type { GuildSettings } from '../../settings/schema.js';
+import type { GuildSettings, TicketPanelSetting } from '../../settings/schema.js';
 import { divider, panel, text, v2 } from '../../ui/components.js';
 import { emoji } from '../../ui/emoji.js';
 import { colors } from '../../ui/theme.js';
@@ -20,9 +20,10 @@ import { ticketHeader } from './render.js';
 
 const log = createLogger('tickets');
 
-export function isStaff(member: GuildMember, settings: GuildSettings): boolean {
+export function isStaff(member: GuildMember, settings: GuildSettings, ticket?: TicketRecord): boolean {
   if (member.permissions.has(PermissionFlagsBits.ManageChannels)) return true;
-  return settings.tickets.staffRoleIds.some((id) => member.roles.cache.has(id));
+  const roleIds = ticket?.staffRoleIds ?? settings.tickets.staffRoleIds;
+  return roleIds.some((id) => member.roles.cache.has(id));
 }
 
 export async function openTicketCount(guildId: string, userId: string): Promise<number> {
@@ -33,10 +34,26 @@ export async function findTicket(channelId: string): Promise<TicketRecord | null
   return TicketModel.findOne({ channelId, status: 'open' }).lean<TicketRecord>();
 }
 
-export async function createTicket(member: GuildMember, settings: GuildSettings, topic: string, category: string | null) {
+export function ticketRouting(settings: GuildSettings, panel: TicketPanelSetting) {
+  return {
+    parentId: panel.parentId ?? settings.tickets.parentId,
+    logChannelId: panel.logChannelId ?? settings.tickets.logChannelId,
+    staffRoleIds: panel.staffRoleIds ?? settings.tickets.staffRoleIds,
+  };
+}
+
+export async function createTicket(
+  member: GuildMember,
+  settings: GuildSettings,
+  panel: TicketPanelSetting,
+  category: string | null,
+  answers: Array<{ questionId: string; label: string; answer: string }>,
+) {
   const guild = member.guild;
   const ticketId = await guilds.nextCounter(guild.id, 'tickets');
   const me = guild.members.me!;
+  const routing = ticketRouting(settings, panel);
+  const topic = answers.find((answer) => answer.answer)?.answer ?? '';
   const memberAccess = [
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
@@ -48,25 +65,37 @@ export async function createTicket(member: GuildMember, settings: GuildSettings,
   const channel = await guild.channels.create({
     name: `ticket-${String(ticketId).padStart(4, '0')}`,
     type: ChannelType.GuildText,
-    parent: settings.tickets.parentId ?? undefined,
+    parent: routing.parentId ?? undefined,
     topic: `Ticket #${ticketId} · ${member.user.tag} · ${topic.slice(0, 200)}`,
     permissionOverwrites: [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
       { id: member.id, type: OverwriteType.Member, allow: memberAccess },
       { id: me.id, type: OverwriteType.Member, allow: [...memberAccess, PermissionFlagsBits.ManageChannels] },
-      ...settings.tickets.staffRoleIds
+      ...routing.staffRoleIds
         .filter((id) => guild.roles.cache.has(id))
         .map((id) => ({ id, type: OverwriteType.Role, allow: memberAccess })),
     ],
     reason: `Ticket #${ticketId} opened by ${member.user.tag}`,
   });
 
-  const ticket = (await TicketModel.create({ guildId: guild.id, ticketId, channelId: channel.id, openerId: member.id, topic, category })).toObject();
+  const ticket = (await TicketModel.create({
+    guildId: guild.id,
+    ticketId,
+    channelId: channel.id,
+    openerId: member.id,
+    topic,
+    category,
+    panelId: panel.id,
+    panelTitle: panel.title,
+    answers,
+    staffRoleIds: routing.staffRoleIds,
+    logChannelId: routing.logChannelId,
+  })).toObject();
 
-  const staffPings = settings.tickets.staffRoleIds.map((id) => `<@&${id}>`).join(' ');
+  const staffPings = routing.staffRoleIds.map((id) => `<@&${id}>`).join(' ');
   await channel.send({
     ...v2([text(`${member} ${staffPings}`.trim()), ticketHeader(ticket, settings)]),
-    allowedMentions: { users: [member.id], roles: settings.tickets.staffRoleIds },
+    allowedMentions: { users: [member.id], roles: routing.staffRoleIds },
   });
   return { ticket, channel };
 }
@@ -86,7 +115,8 @@ async function fetchAllMessages(channel: TextChannel, max = 1000): Promise<Messa
 function transcriptText(ticket: TicketRecord, channel: TextChannel, messages: Message[]): string {
   const header = [
     `Ticket #${ticket.ticketId} — ${channel.guild.name}`,
-    `Opened by: ${ticket.openerId}  |  Topic: ${ticket.topic}`,
+    `Opened by: ${ticket.openerId}  |  Panel: ${ticket.panelTitle ?? 'Ticket'}`,
+    ...(ticket.answers?.length ? ticket.answers.map((a) => `${a.label}: ${a.answer || '(no answer)'}`) : [`Topic: ${ticket.topic}`]),
     `Created: ${ticket.createdAt.toISOString()}  |  Closed: ${new Date().toISOString()}`,
     '─'.repeat(60),
   ];
@@ -127,7 +157,8 @@ export async function closeTicket(channel: TextChannel, ticket: TicketRecord, cl
     .addSeparatorComponents(divider())
     .addFileComponents((f) => f.setURL(`attachment://${fileName}`));
 
-  const logChannel = settings.tickets.logChannelId ? channel.guild.channels.cache.get(settings.tickets.logChannelId) : null;
+  const logChannelId = ticket.logChannelId !== undefined ? ticket.logChannelId : settings.tickets.logChannelId;
+  const logChannel = logChannelId ? channel.guild.channels.cache.get(logChannelId) : null;
   if (logChannel?.isSendable()) {
     await logChannel.send({ ...v2(summary), files: [file] }).catch((error) => log.warn('Could not send transcript', error));
   }

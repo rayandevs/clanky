@@ -40,11 +40,11 @@ export type SettingsCtx = GuildContext<SettingsInteraction>;
  * "done"   → the handler already replied.
  * { warn } → re-draw, then show a short warning.
  */
-export type HandleResult = 'render' | 'done' | { warn: string };
+export type HandleResult = 'render' | 'done' | { warn: string } | { state: string[] };
 
 export interface SettingsPage {
   id: PageId;
-  render(env: PageEnv): ContainerBuilder | Promise<ContainerBuilder>;
+  render(env: PageEnv, state?: string[]): ContainerBuilder | Promise<ContainerBuilder>;
   handle?(ctx: SettingsCtx, action: string, args: string[]): Promise<HandleResult>;
 }
 
@@ -105,6 +105,7 @@ export function channelPicker(
   page: PageId,
   action: string,
   options: { current: string | null | string[]; placeholder: string; max?: number; types?: ChannelType[] },
+  args: string[] = [],
 ) {
   const current = (Array.isArray(options.current) ? options.current : [options.current]).filter(
     (id): id is string => Boolean(id && env.guild.channels.cache.has(id)),
@@ -112,7 +113,7 @@ export function channelPicker(
   const max = options.max ?? 1;
   return row(
     new ChannelSelectMenuBuilder()
-      .setCustomId(sid(page, action))
+      .setCustomId(sid(page, action, ...args))
       .setPlaceholder(options.placeholder)
       .setChannelTypes(...(options.types ?? TEXT_CHANNELS))
       .setMinValues(0)
@@ -121,11 +122,11 @@ export function channelPicker(
   );
 }
 
-export function rolePicker(env: PageEnv, page: PageId, action: string, options: { current: string[]; placeholder: string; max: number }) {
+export function rolePicker(env: PageEnv, page: PageId, action: string, options: { current: string[]; placeholder: string; max: number }, args: string[] = []) {
   const current = options.current.filter((id) => env.guild.roles.cache.has(id));
   return row(
     new RoleSelectMenuBuilder()
-      .setCustomId(sid(page, action))
+      .setCustomId(sid(page, action, ...args))
       .setPlaceholder(options.placeholder)
       .setMinValues(0)
       .setMaxValues(options.max)

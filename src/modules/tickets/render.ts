@@ -2,15 +2,14 @@ import { ButtonStyle, type ContainerBuilder } from 'discord.js';
 import { cid } from '../../core/customId.js';
 import { timestamp } from '../../core/time.js';
 import type { TicketRecord } from '../../database/models/index.js';
-import type { GuildSettings } from '../../settings/schema.js';
+import type { GuildSettings, TicketPanelSetting } from '../../settings/schema.js';
 import { button, divider, panel, row, text } from '../../ui/components.js';
 import { emoji } from '../../ui/emoji.js';
 import { colors } from '../../ui/theme.js';
 
-export function ticketPanel(settings: GuildSettings): ContainerBuilder {
-  const s = settings.tickets;
-  return panel({ title: s.panelTitle, emoji: 'ticket', description: s.panelDescription, accent: settings.general.accentColor }).addActionRowComponents(
-    row(button({ id: cid('tk', 'open'), label: 'Open a ticket', emoji: 'ticket', style: ButtonStyle.Primary })),
+export function ticketPanel(settings: GuildSettings, panelSettings: TicketPanelSetting = settings.tickets.panels[0]!): ContainerBuilder {
+  return panel({ title: panelSettings.title, emoji: 'ticket', description: panelSettings.description, accent: settings.general.accentColor }).addActionRowComponents(
+    row(button({ id: cid('tk', 'open', panelSettings.id), label: 'Open a ticket', emoji: 'ticket', style: ButtonStyle.Primary })),
   );
 }
 
@@ -22,10 +21,14 @@ export function ticketHeader(ticket: TicketRecord, settings: GuildSettings): Con
     ticket.claimedBy ? `${emoji('claim')} **Claimed by** <@${ticket.claimedBy}>` : `${emoji('loading')} Waiting for a staff member`,
   ].filter(Boolean);
 
-  return panel({ title: `Ticket #${ticket.ticketId}`, emoji: 'ticket', accent: ticket.claimedBy ? colors.success : settings.general.accentColor })
+  const answers = ticket.answers?.length
+    ? ticket.answers.map((answer) => text(`**${answer.label}**\n${answer.answer || '*No answer provided*'}`))
+    : [text(`**Topic**\n${ticket.topic || 'No topic given.'}`)];
+
+  return panel({ title: `Ticket #${ticket.ticketId}`, emoji: 'ticket', description: ticket.panelTitle, accent: ticket.claimedBy ? colors.success : settings.general.accentColor })
     .addTextDisplayComponents(text(lines.join('\n')))
     .addSeparatorComponents(divider())
-    .addTextDisplayComponents(text(`**Topic**\n${ticket.topic || 'No topic given.'}`))
+    .addTextDisplayComponents(...answers)
     .addActionRowComponents(
       row(
         button({ id: cid('tk', 'claim', ticket.ticketId), label: ticket.claimedBy ? 'Claimed' : 'Claim', emoji: 'claim', style: ButtonStyle.Success, disabled: Boolean(ticket.claimedBy) }),

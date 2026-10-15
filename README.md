@@ -21,7 +21,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 | 🛡️ **Moderation** | Warn, timeout, kick, ban, unban and purge. Every action becomes a numbered **case** with history, editable reasons, a mod log and optional DMs to the member. |
 | 🚩 **Reports** | Right-click a message → **Report message**. Staff get a report card with buttons to delete the message, time out the author or dismiss. |
 | 🤖 **AutoMod** | One-click **native Discord AutoMod** rules: invite links, mention spam, spam and blocked words. They keep working when Clanky is offline. |
-| 🎫 **Tickets** | A panel button opens a modal (category + topic) and creates a private channel. Claim or close it with buttons. A **transcript** goes to the log channel and to the member. |
+| 🎫 **Tickets** | Up to three panels, each with a customizable intake form and optional staff/category/transcript routing. Answers are saved with the ticket and transcript; tracked panels can be refreshed in place. |
 | 👋 **Welcome** | Welcome and leave messages with placeholders, avatars and **auto roles** (works with membership screening). |
 | 🎭 **Role panels** | Members press **Choose roles** and pick from a select menu that already shows their current roles. "Pick any" or "Pick one" modes. |
 | 💡 **Suggestions** | Members submit ideas in a modal. Others vote with buttons. Reviewers approve, deny or mark them implemented, and the author gets a DM. Discussion threads are optional. |

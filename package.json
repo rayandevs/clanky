@@ -8,6 +8,7 @@
     "build:bot": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && npm --prefix dashboard run typecheck",
+    "test": "tsx --test tests/*.test.ts",
     "postinstall": "npm install --prefix dashboard --no-audit --no-fund",
     "deploy:commands": "tsx src/scripts/deploy-commands.ts",
     "deploy:commands:prod": "node dist/scripts/deploy-commands.js",

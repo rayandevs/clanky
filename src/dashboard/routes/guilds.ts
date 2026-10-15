@@ -1,15 +1,14 @@
-import { ChannelType, PermissionFlagsBits, type Guild } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, type Guild, type TextChannel } from 'discord.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Clanky } from '../../client/Clanky.js';
 import { createLogger } from '../../core/logger.js';
 import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketModel } from '../../database/models/index.js';
 import { canManageAutomod, deleteRule, RULE_KINDS, ruleStates, syncAllRules, upsertRule, type RuleKind } from '../../modules/automod/service.js';
-import { ticketPanel } from '../../modules/tickets/render.js';
+import { listTicketPanelMessages, publishTicketPanel } from '../../modules/tickets/panels.js';
 import { guilds, salvage } from '../../services/index.js';
 import { MODULES } from '../../settings/registry.js';
 import { GuildSettingsSchema, type GuildSettings, type SettingsSection } from '../../settings/schema.js';
-import { v2 } from '../../ui/components.js';
 import { canManage, inviteUrl, managedGuild } from '../access.js';
 import { AuthError, requireUser } from '../auth.js';
 import { discordApi, DiscordHttpError } from '../discord.js';
@@ -160,6 +159,7 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
     return {
       settings,
       resources: resources(guild),
+      postedTicketPanels: await listTicketPanelMessages(guild.id),
       automod: { canManage: canAutomod, rules: canAutomod ? await ruleStates(guild, settings).catch(() => null) : null },
     };
   });
@@ -233,15 +233,23 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
     const access = await managedGuild(client, request, reply);
     if (!access) return;
     const { guild } = access;
-    const { channelId } = z.object({ channelId: z.string().regex(/^\d{17,20}$/) }).parse(request.body);
+    const { channelId, panelId, mode } = z.object({
+      channelId: z.string().regex(/^\d{17,20}$/),
+      panelId: z.string().min(1).max(20),
+      mode: z.enum(['publish', 'update']).default('publish'),
+    }).parse(request.body);
     const channel = guild.channels.cache.get(channelId);
     if (!channel?.isSendable() || !TEXT_TYPES.has(channel.type)) return reply.code(400).send({ error: 'invalid', message: 'Pick a text channel.' });
+    const settings = await guilds.settings(guild.id);
+    const panel = settings.tickets.panels.find((item) => item.id === panelId);
+    if (!panel) return reply.code(404).send({ error: 'not_found', message: 'That ticket panel no longer exists.' });
     try {
-      await channel.send(v2(ticketPanel(await guilds.settings(guild.id))));
+      const result = await publishTicketPanel(channel as TextChannel, settings, panel, mode);
+      if (result === 'missing') return reply.code(404).send({ error: 'not_found', message: 'No tracked panel exists in that channel to update.' });
+      return { ok: true, result };
     } catch {
       return reply.code(400).send({ error: 'permissions', message: "Clanky can't post in that channel." });
     }
-    return { ok: true };
   });
 
   app.get('/api/guilds/:guildId/audit', async (request, reply) => {

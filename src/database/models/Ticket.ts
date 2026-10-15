@@ -1,5 +1,11 @@
 import { Schema, model } from 'mongoose';
 
+export interface TicketAnswer {
+  questionId: string;
+  label: string;
+  answer: string;
+}
+
 export interface TicketRecord {
   guildId: string;
   ticketId: number;
@@ -7,6 +13,12 @@ export interface TicketRecord {
   openerId: string;
   category: string | null;
   topic: string;
+  panelId?: string;
+  panelTitle?: string;
+  answers?: TicketAnswer[];
+  /** Resolved routing snapshot, so later settings edits don't reroute an open ticket. */
+  staffRoleIds?: string[];
+  logChannelId?: string | null;
   status: 'open' | 'closed';
   claimedBy: string | null;
   closedBy: string | null;
@@ -24,6 +36,14 @@ const ticketSchema = new Schema<TicketRecord>(
     openerId: { type: String, required: true },
     category: { type: String, default: null },
     topic: { type: String, default: '' },
+    panelId: { type: String, default: 'general' },
+    panelTitle: { type: String, default: 'Need help?' },
+    answers: {
+      type: [{ questionId: String, label: String, answer: String }],
+      default: [],
+    },
+    staffRoleIds: { type: [String], default: undefined },
+    logChannelId: { type: String, default: null },
     status: { type: String, enum: ['open', 'closed'], default: 'open' },
     claimedBy: { type: String, default: null },
     closedBy: { type: String, default: null },

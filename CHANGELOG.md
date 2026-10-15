@@ -2,6 +2,13 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## Unreleased
+
+### Added
+- Ticket administrators can configure up to three panels, custom intake questions, per-panel staff/channel/transcript routing, and preview/post panels from both `/settings` and the dashboard
+- Panel messages are tracked and refreshed in place; tickets preserve question labels, answers, and routing snapshots in transcripts
+- Existing single-panel title/description settings migrate to the first configurable panel
+
 ## [0.1.0-beta.7] — 2026-10-15
 
 ### Added

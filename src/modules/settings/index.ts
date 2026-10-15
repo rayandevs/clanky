@@ -21,10 +21,10 @@ const PAGES = new Map<PageId, SettingsPage>(
   [homePage, generalPage, moderationPage, automodPage, loggingPage, welcomePage, ticketsPage, suggestionsPage, levelingPage, gamesPage].map((p) => [p.id, p]),
 );
 
-async function renderPage(client: Clanky, guild: Guild, pageId: PageId) {
+async function renderPage(client: Clanky, guild: Guild, pageId: PageId, state: string[] = []) {
   const record = await guilds.get(guild.id);
   const page = PAGES.get(pageId) ?? homePage;
-  return page.render({ client, guild, settings: record.settings, accent: record.settings.general.accentColor });
+  return page.render({ client, guild, settings: record.settings, accent: record.settings.general.accentColor }, state);
 }
 
 const settingsCommand = guildSlashCommand({
@@ -73,8 +73,9 @@ async function dispatch(ctx: SettingsCtx, args: string[]): Promise<void> {
     if (!page?.handle) return;
     const result = await page.handle(ctx, action, rest);
     if (result === 'done') return;
-    await update(ctx, await renderPage(client, interaction.guild, pageId));
-    if (typeof result === 'object') await interaction.followUp(v2(notice('info', result.warn), { ephemeral: true }));
+    const state = typeof result === 'object' && 'state' in result ? result.state : [];
+    await update(ctx, await renderPage(client, interaction.guild, pageId, state));
+    if (typeof result === 'object' && 'warn' in result) await interaction.followUp(v2(notice('info', result.warn), { ephemeral: true }));
     return;
   }
 

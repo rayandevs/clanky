@@ -75,9 +75,8 @@ export interface GuildSettings {
     logChannelId: string | null;
     staffRoleIds: string[];
     maxOpenPerUser: number;
-    panelTitle: string;
-    panelDescription: string;
     categories: Array<{ id: string; label: string; description: string }>;
+    panels: TicketPanel[];
   };
   suggestions: { enabled: boolean; channelId: string | null; reviewerRoleIds: string[]; anonymous: boolean; createThreads: boolean };
   leveling: {
@@ -118,7 +117,29 @@ export interface Role { id: string; name: string; color: number; managed: boolea
 export interface SettingsPayload {
   settings: GuildSettings;
   resources: { channels: Channel[]; roles: Role[] };
+  postedTicketPanels?: Array<{ panelId: string; channelId: string; messageId: string; updatedAt: string }>;
   automod: { canManage: boolean; rules: Record<RuleKind, boolean> | null };
+}
+
+export interface TicketQuestion {
+  id: string;
+  label: string;
+  description: string;
+  placeholder: string;
+  style: 'short' | 'paragraph';
+  required: boolean;
+  minLength: number;
+  maxLength: number;
+}
+
+export interface TicketPanel {
+  id: string;
+  title: string;
+  description: string;
+  questions: TicketQuestion[];
+  parentId: string | null;
+  logChannelId: string | null;
+  staffRoleIds: string[] | null;
 }
 
 export interface SalvagePlayer {

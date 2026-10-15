@@ -53,6 +53,40 @@ export const TicketCategory = z.object({
   description: z.string().max(100).default(''),
 });
 
+export const TicketQuestion = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,19}$/),
+  label: z.string().trim().min(1).max(45),
+  description: z.string().max(100).default(''),
+  placeholder: z.string().max(100).default(''),
+  style: z.enum(['short', 'paragraph']).default('paragraph'),
+  required: z.boolean().default(true),
+  minLength: z.number().int().min(0).max(4000).default(0),
+  maxLength: z.number().int().min(1).max(1000).default(1000),
+}).refine((question) => question.minLength <= question.maxLength, { message: 'Minimum answer length must not exceed maximum length.' });
+export type TicketQuestionSetting = z.infer<typeof TicketQuestion>;
+
+export const TicketPanelSettings = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,19}$/),
+  title: z.string().trim().min(1).max(100).default('Need help?'),
+  description: z.string().min(1).max(1000).default('Press the button below to open a private ticket with our team.'),
+  questions: z.array(TicketQuestion).max(5).default(() => [{ id: 'topic', label: 'How can we help?', description: '', placeholder: '', style: 'paragraph' as const, required: true, minLength: 5, maxLength: 1000 }]),
+  /** Null means inherit the server-wide setting. */
+  parentId: channel,
+  logChannelId: channel,
+  staffRoleIds: roles(10).nullable().default(null),
+});
+export type TicketPanelSetting = z.infer<typeof TicketPanelSettings>;
+
+const DEFAULT_TICKET_PANEL = {
+  id: 'general',
+  title: 'Need help?',
+  description: 'Press the button below to open a private ticket with our team.',
+  questions: [{ id: 'topic', label: 'How can we help?', description: '', placeholder: '', style: 'paragraph' as const, required: true, minLength: 5, maxLength: 1000 }],
+  parentId: null,
+  logChannelId: null,
+  staffRoleIds: null,
+};
+
 export const TicketSettings = z.object({
   enabled: z.boolean().default(false),
   /** Discord category channel where ticket channels are created. */
@@ -60,9 +94,26 @@ export const TicketSettings = z.object({
   logChannelId: channel,
   staffRoleIds: roles(10),
   maxOpenPerUser: z.number().int().min(1).max(5).default(1),
-  panelTitle: z.string().min(1).max(100).default('Need help?'),
-  panelDescription: z.string().min(1).max(1000).default('Press the button below to open a private ticket with our team.'),
   categories: z.array(TicketCategory).max(10).default([]),
+  panels: z.array(TicketPanelSettings).min(1).max(3).default(() => [DEFAULT_TICKET_PANEL]),
+}).superRefine((settings, ctx) => {
+  const sharedModalComponents = settings.categories.length ? 1 : 0;
+  const panelIds = new Set<string>();
+  settings.panels.forEach((panel, index) => {
+    if (panelIds.has(panel.id)) ctx.addIssue({ code: 'custom', path: ['panels', index, 'id'], message: 'Panel IDs must be unique.' });
+    panelIds.add(panel.id);
+    const questionIds = new Set<string>();
+    panel.questions.forEach((question, questionIndex) => {
+      if (questionIds.has(question.id)) ctx.addIssue({ code: 'custom', path: ['panels', index, 'questions', questionIndex, 'id'], message: 'Question IDs must be unique within a panel.' });
+      questionIds.add(question.id);
+    });
+    if (panel.questions.length + sharedModalComponents > 5) {
+      ctx.addIssue({ code: 'custom', path: ['panels', index, 'questions'], message: 'A ticket form can contain at most five modal fields, including the topic selector.' });
+    }
+    if (panel.questions.length + sharedModalComponents < 1) {
+      ctx.addIssue({ code: 'custom', path: ['panels', index, 'questions'], message: 'Add at least one question or a ticket topic selector.' });
+    }
+  });
 });
 
 export const SuggestionSettings = z.object({
@@ -135,13 +186,32 @@ export type SettingsSection = keyof GuildSettings;
 
 /** Parses stored settings, falling back to defaults for any broken section. */
 export function parseGuildSettings(input: unknown): GuildSettings {
-  const result = GuildSettingsSchema.safeParse(input ?? {});
+  const source = (input ?? {}) as Record<string, unknown>;
+  const rawTickets = source.tickets && typeof source.tickets === 'object' ? (source.tickets as Record<string, unknown>) : {};
+  const migrated: Record<string, unknown> = Array.isArray(rawTickets.panels)
+    ? source
+    : {
+        ...source,
+        tickets: {
+          ...rawTickets,
+          panels: [
+            {
+              ...DEFAULT_TICKET_PANEL,
+              title: typeof rawTickets.panelTitle === 'string' && rawTickets.panelTitle.trim() ? rawTickets.panelTitle : DEFAULT_TICKET_PANEL.title,
+              description:
+                typeof rawTickets.panelDescription === 'string' && rawTickets.panelDescription.trim()
+                  ? rawTickets.panelDescription
+                  : DEFAULT_TICKET_PANEL.description,
+            },
+          ],
+        },
+      };
+  const result = GuildSettingsSchema.safeParse(migrated);
   if (result.success) return result.data;
 
-  const source = (input ?? {}) as Record<string, unknown>;
   const repaired: Record<string, unknown> = {};
   for (const [key, schema] of Object.entries(GuildSettingsSchema.shape)) {
-    const section = schema.safeParse(source[key]);
+    const section = schema.safeParse(migrated[key]);
     repaired[key] = section.success ? section.data : schema.parse(undefined);
   }
   return repaired as GuildSettings;

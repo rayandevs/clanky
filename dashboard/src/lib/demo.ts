@@ -88,7 +88,11 @@ const defaults = (): GuildSettings => ({
   welcome: { enabled: true, channelId: id(11), message: 'Welcome to **{server}**, {user}! You are member **#{count}** 🎉', leaveEnabled: false, leaveMessage: '**{username}** left the server. 👋', autoRoleIds: [id(57)], showAvatar: true },
   tickets: {
     enabled: true, parentId: id(30), logChannelId: id(44), staffRoleIds: [id(53)], maxOpenPerUser: 1,
-    panelTitle: 'Need help?', panelDescription: 'Press the button below to open a private ticket with our team.',
+    panels: [{
+      id: 'general-support', title: 'Need help?', description: 'Press the button below to open a private ticket with our team.',
+      questions: [{ id: 'topic', label: 'How can we help?', description: '', placeholder: 'Tell us a little about the issue', style: 'paragraph', required: true, minLength: 5, maxLength: 1000 }],
+      parentId: null, logChannelId: null, staffRoleIds: null,
+    }],
     categories: [
       { id: 'support', label: 'General support', description: 'Questions about the server' },
       { id: 'report', label: 'Report a member', description: 'Something broke the rules' },
@@ -206,7 +210,7 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
     if (!c) return ok(overview(b));
     const s = settingsOf(b);
     const rules = (): Record<RuleKind, boolean> => ({ invites: !!s.automod.rules.invites, mentionSpam: !!s.automod.rules.mentionSpam, spam: !!s.automod.rules.spam, keywords: !!s.automod.rules.keywords });
-    if (c === 'settings' && method === 'GET') return ok({ settings: s, resources: { channels, roles }, automod: { canManage: true, rules: rules() } } satisfies SettingsPayload);
+    if (c === 'settings' && method === 'GET') return ok({ settings: s, resources: { channels, roles }, postedTicketPanels: [], automod: { canManage: true, rules: rules() } } satisfies SettingsPayload);
     if (c === 'settings' && method === 'PATCH' && d) {
       const section = d as SectionId;
       if (section === 'leveling') {
@@ -223,7 +227,7 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
       s.automod.rules[kind] = enabled ? `r-${kind}` : null;
       return ok({ settings: s, rules: rules() });
     }
-    if (c === 'tickets') return ok({ ok: true });
+    if (c === 'tickets') return ok({ ok: true, result: (body as { mode?: string } | undefined)?.mode === 'update' ? 'updated' : 'posted' });
   }
   throw new ApiError(404, 'Not found', 'not_found');
 }

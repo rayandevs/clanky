@@ -92,8 +92,8 @@ const CHAPTERS: Chapter[] = [
     emoji: '🎫',
     label: 'Tickets',
     title: 'Support that stays private.',
-    body: 'Post a panel, members pick a topic and get their own channel with your team. Claim it, close it, and a transcript lands in your log.',
-    points: ['Up to 10 topics', 'Staff roles and open-ticket limits', 'Transcripts when a ticket closes'],
+    body: 'Create up to three entry panels with tailored intake questions and routing. Answers stay with the ticket, while staff can claim, close, and transcript the conversation.',
+    points: ['Up to 3 panels and 10 shared topics', 'Custom questions with panel-specific routing', 'Saved answers and in-place panel updates'],
     channel: 'help-desk',
     mock: (
       <>
