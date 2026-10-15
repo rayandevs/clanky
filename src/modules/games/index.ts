@@ -21,7 +21,7 @@ function blockedHere(ctx: AnyCtx): string | null {
   const channel = ctx.interaction.channel;
   const id = channel?.isThread() ? channel.parentId : ctx.interaction.channelId;
   if (id && allowed.includes(id)) return null;
-  return `${emoji('game')} Games are played in ${allowed.slice(0, 5).map((c) => `<#${c}>`).join(', ')} here.`;
+  return `Games are played in ${allowed.slice(0, 5).map((c) => `<#${c}>`).join(', ')} here.`;
 }
 
 const guildIdOf = (ctx: AnyCtx) => (ctx.guild ? ctx.guild.guildId : null);
@@ -83,7 +83,8 @@ const salvageCommand = slashCommand({
         if (target.bot) return reply(interaction, 'info', "Bots don't play Salvage. Yet. 🤖");
         const player = target.id === me ? await salvage.get(me) : await salvage.find(target.id);
         if (!player) return reply(interaction, 'info', `**${target.displayName}** hasn't played yet.`);
-        return send(await profileView(player, target, me, accent, guildIdOf(ctx)));
+        await interaction.deferReply(user.preferences.privateReplies ? { flags: MessageFlags.Ephemeral } : {});
+        return interaction.editReply({ ...(await profileView(player, target, me, accent, guildIdOf(ctx))), flags: MessageFlags.IsComponentsV2 });
       }
       case 'top': {
         await interaction.deferReply(user.preferences.privateReplies ? { flags: MessageFlags.Ephemeral } : {});
@@ -157,7 +158,7 @@ const salvageComponents = components({
         return show(shopView(result.player, owner, accent, note));
       }
       case 'profile':
-        return show(await profileView(await salvage.get(owner), interaction.user, owner, accent, guildIdOf(ctx)));
+        return showDeferred(async () => profileView(await salvage.get(owner), interaction.user, owner, accent, guildIdOf(ctx)));
       case 'col': {
         const player = await salvage.get(owner);
         return show(collectionView(player, owner, args[0] ?? zoneOf(player).id, accent));
@@ -177,9 +178,14 @@ const salvageComponents = components({
     if (action === 'travel') {
       const zone = ZONE_BY_ID.get(value);
       const player = await salvage.travel(owner, value);
-      if (!player || !zone) return reply(interaction, 'warning', `${emoji('locked')} Reach level **${zone?.level ?? '?'}** to travel there.`);
-      await interaction.update({ ...(await profileView(player, interaction.user, owner, accent, guildIdOf(ctx))), attachments: [] });
-      return interaction.followUp({ ...notice(`${zone.emoji} You traveled to **${zone.name}**. Loot here is worth ×${zone.valueMultiplier}!`), flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+      await interaction.deferUpdate();
+      // Always re-render so the menu snaps back to the real zone.
+      const current = player ?? (await salvage.get(owner));
+      await interaction.editReply({ ...(await profileView(current, interaction.user, owner, accent, guildIdOf(ctx))), attachments: [] });
+      if (!player || !zone) {
+        return interaction.followUp({ components: [noticeBox('warning', `Reach level **${zone?.level ?? '?'}** to travel there.`)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+      }
+      return interaction.followUp({ ...notice(`You traveled to ${zone.emoji} **${zone.name}**. Loot here is worth ×${zone.valueMultiplier}!`), flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
     }
     if (action === 'col') {
       return interaction.update({ ...collectionView(await salvage.get(owner), owner, value, accent), attachments: [] });

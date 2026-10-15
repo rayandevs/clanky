@@ -11,6 +11,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.4',
+    date: '2026-10-15',
+    title: 'Profile cards 🪪',
+    highlights: [
+      '`/salvage profile` is now an image card',
+      'Cleaner, easier-to-read game messages',
+    ],
+  },
+  {
     version: '0.1.0-beta.3',
     date: '2026-10-15',
     title: 'Salvage is here 🔧',

@@ -55,7 +55,7 @@ export interface Item {
   value: number;
   /** Unicode emoji shown in messages */
   emoji: string;
-  /** Twemoji file in assets/game/icons (used on image cards) */
+  /** Twemoji file in assets/icons (used on image cards) */
   icon: string;
 }
 

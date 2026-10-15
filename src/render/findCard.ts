@@ -1,22 +1,6 @@
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { createCanvas, loadImage, type Image } from '@napi-rs/canvas';
+import { createCanvas } from '@napi-rs/canvas';
+import { loadIcon } from './icons.js';
 import { ensureFonts, fillRoundRect, fitText, font, formatNumber, hex, palette, progressBar, roundRect } from './canvas.js';
-
-const ICON_DIR = fileURLToPath(new URL('../../assets/game/icons/', import.meta.url));
-const icons = new Map<string, Promise<Image | null>>();
-
-/** Loads a Twemoji SVG at a high resolution (cached). */
-function loadIcon(code: string): Promise<Image | null> {
-  let cached = icons.get(code);
-  if (!cached) {
-    cached = readFile(`${ICON_DIR}${code}.svg`, 'utf8')
-      .then((svg) => loadImage(Buffer.from(svg.replace('<svg ', '<svg width="512" height="512" '))))
-      .catch(() => null);
-    icons.set(code, cached);
-  }
-  return cached;
-}
 
 export interface FindCardData {
   /** Twemoji code, e.g. "1f529" */

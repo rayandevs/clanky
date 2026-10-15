@@ -2,6 +2,16 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## [0.1.0-beta.4] — 2026-10-15
+
+### Changed
+- `/salvage profile` is now an image card: level bar, 4 key stats (credits, collection, streak, global rank) and zone / tool / best find, with a hazard-tape strip
+- Twemoji icons moved to `assets/icons` with a shared `loadIcon()` helper (`src/render/icons.ts`) so any card can use them
+- Removed doubled emojis in game notices
+
+### Fixed
+- Picking a locked zone left the menu showing that zone. The profile now re-renders so the menu shows your real zone.
+
 ## [0.1.0-beta.3] — 2026-10-15
 
 ### Added

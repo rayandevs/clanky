@@ -14,9 +14,11 @@ import { timestamp } from '../../core/time.js';
 import type { GamePlayerRecord } from '../../database/models/index.js';
 import { BALANCE, ITEMS, RARITY, TOOLS, ZONES, ZONE_BY_ID, gameLevel, itemsInZone, itemValue, type Zone } from '../../games/salvage/data.js';
 import { renderFindCard } from '../../render/findCard.js';
+import { iconCode } from '../../render/icons.js';
 import { renderLeaderboard } from '../../render/leaderboard.js';
+import { renderProfileCard } from '../../render/profileCard.js';
 import { salvage, toolOf, zoneOf, findValue, type Find, type GrantResult } from '../../services/SalvageService.js';
-import { button, divider, panel, progressBar, row, text } from '../../ui/components.js';
+import { button, divider, panel, row, text } from '../../ui/components.js';
 import { emoji } from '../../ui/emoji.js';
 
 /* Custom IDs: sv:<action>:<ownerId>:...args */
@@ -200,31 +202,32 @@ export async function profileView(player: GamePlayerRecord, user: User, viewer: 
   const progress = gameLevel(player.xp);
   const tool = toolOf(player);
   const zone = zoneOf(player);
-  const foundCount = Object.values(player.found ?? {}).filter((c) => c > 0).length;
   const best = player.bestFind ? ITEMS.find((i) => i.id === player.bestFind!.itemId) : null;
-  const [globalRank, serverRank] = await Promise.all([salvage.rank(player, null), guildId ? salvage.rank(player, guildId) : null]);
-  const ranks = [globalRank ? `${emoji('globe')} #${n(globalRank)} global` : null, serverRank ? `${emoji('home')} #${n(serverRank)} here` : null].filter(Boolean);
+  const rank = await salvage.rank(player, null);
 
-  const lines = [
-    `${emoji('level')} **Level ${progress.level}** · ${progressBar(progress.current, progress.needed)} ${n(progress.current)}/${n(progress.needed)} XP`,
-    `${emoji('credits')} **${n(player.credits)}** credits · ${emoji('tool')} ${tool.emoji} ${tool.name}`,
-    `${emoji('zone')} ${zone.emoji} ${zone.name} · ${emoji('dig')} **${n(player.digs)}** digs`,
-    `${emoji('collection')} **${foundCount}/${ITEMS.length}** collected · ${emoji('sparkles')} **${player.shinies.length}** shinies`,
-    `${emoji('streak')} **${player.streak}** day streak · ${emoji('golem')} **${player.golemWins}** golems beaten`,
-    best ? `${emoji('trophy')} Best find: ${findName({ item: best, shiny: player.bestFind!.shiny })}` : null,
-    ranks.length ? ranks.join(' · ') : null,
-  ].filter(Boolean);
-
-  const container = panel({
-    title: `${user.displayName}'s salvage profile`,
-    emoji: 'game',
-    description: lines.join('\n'),
+  const image = await renderProfileCard({
+    displayName: user.displayName,
+    avatarUrl: user.displayAvatarURL({ extension: 'png', size: 256 }),
+    level: progress.level,
+    currentXp: progress.current,
+    neededXp: progress.needed,
+    credits: player.credits,
+    collected: Object.values(player.found ?? {}).filter((c) => c > 0).length,
+    collectable: ITEMS.length,
+    streak: player.streak,
+    rank,
+    zone: { name: zone.name, icon: iconCode(zone.emoji) },
+    tool: { name: tool.name, icon: iconCode(tool.emoji) },
+    bestFind: best ? { name: `${player.bestFind!.shiny ? 'Shiny ' : ''}${best.name}`, icon: best.icon, color: RARITY[best.rarity].color } : null,
     accent,
-    thumbnail: user.displayAvatarURL({ extension: 'png', size: 128 }),
   });
 
+  const container = new ContainerBuilder()
+    .setAccentColor(accent)
+    .addMediaGalleryComponents((g) => g.addItems((i) => i.setURL('attachment://profile.png').setDescription(`${user.displayName}'s salvage profile`)));
+
   if (viewer === player.userId) {
-    container.addSeparatorComponents(divider()).addActionRowComponents(zoneSelect(player, viewer));
+    container.addActionRowComponents(zoneSelect(player, viewer));
     container.addActionRowComponents(
       row(
         button({ id: svid('col', viewer, zone.id), label: 'Collection', emoji: 'collection' }),
@@ -233,7 +236,7 @@ export async function profileView(player: GamePlayerRecord, user: User, viewer: 
     );
     container.addActionRowComponents(navRow(viewer, 'profile'));
   }
-  return { components: [container], files: [] };
+  return { components: [container], files: [new AttachmentBuilder(image, { name: 'profile.png' })] };
 }
 
 function zoneSelect(player: GamePlayerRecord, owner: string) {
@@ -246,7 +249,7 @@ function zoneSelect(player: GamePlayerRecord, owner: string) {
           label: zone.name,
           value: zone.id,
           emoji: { name: zone.emoji },
-          description: player.level >= zone.level ? `${zone.description} Loot ×${zone.valueMultiplier}` : `Unlocks at level ${zone.level}`,
+          description: player.level >= zone.level ? `Loot worth ×${zone.valueMultiplier}` : `🔒 Unlocks at level ${zone.level}`,
           default: zone.id === player.zone,
         })),
       ),
@@ -360,4 +363,4 @@ export async function topView(client: Client, guild: Guild | null, scope: 's' | 
   return { components: [container], files: [new AttachmentBuilder(image, { name: 'top.png' })] };
 }
 
-export const cooldownText = (readyAt: Date) => `${emoji('clock')} Your tool needs a moment. Ready ${timestamp(readyAt, 'R')}.`;
+export const cooldownText = (readyAt: Date) => `Your tool needs a moment. Ready ${timestamp(readyAt, 'R')}.`;

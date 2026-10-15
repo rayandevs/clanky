@@ -167,7 +167,7 @@ const reminderComponents = components({
     const ms = parseDuration(delay ?? '10m') ?? 600_000;
     const dueAt = new Date(Date.now() + ms);
     await ReminderModel.updateOne({ _id: id }, { $set: { delivered: false, dueAt } });
-    return interaction.update({ components: [notice('info', `${emoji('snooze')} Snoozed. I'll remind you again ${timestamp(dueAt, 'R')}.\n-# ${truncate(reminder.content, 200)}`)] });
+    return interaction.update({ components: [notice('info', `Snoozed. I'll remind you again ${timestamp(dueAt, 'R')}.\n-# ${truncate(reminder.content, 200)}`)] });
   },
 });
 
