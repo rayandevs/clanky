@@ -11,6 +11,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.3',
+    date: '2026-10-15',
+    title: 'Salvage is here 🔧',
+    highlights: [
+      'New game: dig for loot with `/salvage dig`',
+      '44 items in 4 zones, with shinies and events',
+      'Tool shop, collection log and daily streaks',
+      'Server and global leaderboards',
+    ],
+  },
+  {
     version: '0.1.0-beta.2',
     date: '2026-10-15',
     title: 'Rank cards 🖼️',

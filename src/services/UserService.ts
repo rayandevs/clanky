@@ -1,6 +1,6 @@
 import type { User } from 'discord.js';
 import { version } from '../config/version.js';
-import { MemberModel, ReminderModel, UserModel, type UserRecord } from '../database/models/index.js';
+import { GamePlayerModel, MemberModel, ReminderModel, UserModel, type UserRecord } from '../database/models/index.js';
 import { UserPreferencesSchema, parseUserPreferences, type UserPreferences } from '../settings/schema.js';
 import { TTLCache } from './cache.js';
 
@@ -68,6 +68,7 @@ class UserService {
       UserModel.deleteOne({ userId }),
       MemberModel.deleteMany({ userId }),
       ReminderModel.deleteMany({ userId }),
+      GamePlayerModel.deleteOne({ userId }),
     ]);
     this.cache.delete(userId);
   }

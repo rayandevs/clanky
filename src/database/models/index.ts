@@ -7,3 +7,4 @@ export * from './Suggestion.js';
 export * from './Reminder.js';
 export * from './RolePanel.js';
 export * from './SettingsAudit.js';
+export * from './GamePlayer.js';

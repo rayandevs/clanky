@@ -21,6 +21,10 @@ export interface LeaderboardData {
   rows: LeaderboardRow[];
   viewerRank: number | null;
   accent: number;
+  /** Defaults to "LEADERBOARD" */
+  title?: string;
+  /** Footer text. Defaults to the leveling hint. */
+  footer?: string;
 }
 
 const WIDTH = 1000;
@@ -57,7 +61,7 @@ export async function renderLeaderboard(data: LeaderboardData): Promise<Buffer> 
   ctx.textBaseline = 'alphabetic';
   ctx.font = font('Bold', 44);
   ctx.fillStyle = palette.text;
-  ctx.fillText('LEADERBOARD', 148, 86);
+  ctx.fillText(data.title ?? 'LEADERBOARD', 148, 86);
   ctx.font = font('Medium', 22);
   ctx.fillStyle = palette.muted;
   ctx.fillText(fitText(ctx, `${data.serverName}  ·  Page ${data.page + 1} of ${data.pages}`, 790), 150, 122);
@@ -107,7 +111,7 @@ export async function renderLeaderboard(data: LeaderboardData): Promise<Buffer> 
   ctx.textBaseline = 'alphabetic';
   ctx.font = font('Medium', 20);
   ctx.fillStyle = palette.muted;
-  const footer = data.viewerRank ? `You are #${formatNumber(data.viewerRank)}  ·  /rank to see your card` : 'Chat to earn XP  ·  /rank to see your card';
+  const footer = data.footer ?? (data.viewerRank ? `You are #${formatNumber(data.viewerRank)}  ·  /rank to see your card` : 'Chat to earn XP  ·  /rank to see your card');
   ctx.fillText(footer, WIDTH / 2, height - 30);
 
   return canvas.toBuffer('image/png');

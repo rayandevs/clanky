@@ -454,5 +454,119 @@
     "name": "test",
     "fallback": "🧪",
     "animated": false
+  },
+  "game": {
+    "id": null,
+    "name": "game",
+    "fallback": "🎮",
+    "animated": false
+  },
+  "dig": {
+    "id": null,
+    "name": "dig",
+    "fallback": "🔧",
+    "animated": false
+  },
+  "bag": {
+    "id": null,
+    "name": "bag",
+    "fallback": "🎒",
+    "animated": false
+  },
+  "shop": {
+    "id": null,
+    "name": "shop",
+    "fallback": "🛒",
+    "animated": false
+  },
+  "collection": {
+    "id": null,
+    "name": "collection",
+    "fallback": "📖",
+    "animated": false
+  },
+  "credits": {
+    "id": null,
+    "name": "credits",
+    "fallback": "🪙",
+    "animated": false
+  },
+  "zone": {
+    "id": null,
+    "name": "zone",
+    "fallback": "🗺️",
+    "animated": false
+  },
+  "streak": {
+    "id": null,
+    "name": "streak",
+    "fallback": "🔥",
+    "animated": false
+  },
+  "golem": {
+    "id": null,
+    "name": "golem",
+    "fallback": "👾",
+    "animated": false
+  },
+  "crate": {
+    "id": null,
+    "name": "crate",
+    "fallback": "📦",
+    "animated": false
+  },
+  "tool": {
+    "id": null,
+    "name": "tool",
+    "fallback": "⛏️",
+    "animated": false
+  },
+  "fight": {
+    "id": null,
+    "name": "fight",
+    "fallback": "⚔️",
+    "animated": false
+  },
+  "run": {
+    "id": null,
+    "name": "run",
+    "fallback": "🏃",
+    "animated": false
+  },
+  "sell": {
+    "id": null,
+    "name": "sell",
+    "fallback": "💰",
+    "animated": false
+  },
+  "lucky": {
+    "id": null,
+    "name": "lucky",
+    "fallback": "🍀",
+    "animated": false
+  },
+  "globe": {
+    "id": null,
+    "name": "globe",
+    "fallback": "🌍",
+    "animated": false
+  },
+  "locked": {
+    "id": null,
+    "name": "locked",
+    "fallback": "🔒",
+    "animated": false
+  },
+  "party": {
+    "id": null,
+    "name": "party",
+    "fallback": "🎉",
+    "animated": false
+  },
+  "unknown": {
+    "id": null,
+    "name": "unknown",
+    "fallback": "❓",
+    "animated": false
   }
 }

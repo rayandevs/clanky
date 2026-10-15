@@ -26,6 +26,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 | 🎭 **Role panels** | Members press **Choose roles** and pick from a select menu that already shows their current roles. "Pick any" or "Pick one" modes. |
 | 💡 **Suggestions** | Members submit ideas in a modal. Others vote with buttons. Reviewers approve, deny or mark them implemented, and the author gets a DM. Discussion threads are optional. |
 | ⭐ **Leveling** | XP for chatting with cooldowns, level-up messages, **role rewards**, an image rank card (`/rank`), a paged image `/leaderboard` with a Find me button and admin XP tools. |
+| 🎮 **Games** | **Salvage**: press Dig, find loot, level up. 44 items in 4 zones, shinies, events, a tool shop, a collection log and server + global leaderboards. Progress is global. |
 | ⏰ **Reminders** | `/remind me in:2h about:...` with snooze buttons. Works in DMs and as a user-installed app. |
 | 📊 **Polls** | `/poll` opens a modal and posts a **native Discord poll**. |
 | 📋 **Logging** | Deleted or edited messages, joins and leaves, role and nickname changes. Choose what to log and which channels to ignore. |
@@ -52,6 +53,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 | `/rolepanel create` `list` `delete` | Role panels | Manage Roles |
 | `/suggest` | Submit a suggestion | Everyone |
 | `/rank` `/leaderboard` | Leveling | Everyone |
+| `/salvage dig` `bag` `shop` `profile` `collection` `top` | Games | Everyone |
 | `/xp give` `take` `set-level` `reset-all` | XP admin tools | Manage Server |
 | `/remind me` `list` `cancel` | Reminders | Everyone |
 | `/poll` | Native poll | Everyone |
@@ -143,12 +145,13 @@ src/
 │   └── time.ts, permissions.ts, cooldowns.ts, logger.ts
 ├── database/
 │   ├── connection.ts
-│   └── models/              # Guild, User, Member, Case, Ticket, Suggestion, Reminder, RolePanel, SettingsAudit
+│   └── models/              # Guild, User, Member, Case, Ticket, Suggestion, Reminder, RolePanel, SettingsAudit, GamePlayer
 ├── services/                # Data layer with no Discord dependencies (reusable by the dashboard)
 ├── settings/
 │   ├── schema.ts            # ⭐ Guild settings + user preferences schemas (single source of truth)
 │   └── registry.ts          # Module metadata for navigation
-├── render/                  # Image cards drawn with @napi-rs/canvas (rank card, leaderboard)
+├── games/salvage/data.ts    # ⭐ Salvage content: zones, items, rarities, tools, balance
+├── render/                  # Image cards drawn with @napi-rs/canvas (rank, leaderboard, finds)
 ├── ui/
 │   ├── emojis.json          # ⭐ Every emoji Clanky uses
 │   ├── emoji.ts             # emoji('success') / componentEmoji('ticket')
@@ -161,7 +164,21 @@ src/
 │   └── leveling/ reminders/ polls/ automod/ logging/ welcome/
 └── scripts/deploy-commands.ts
 assets/fonts/                # Poppins (SIL Open Font License) used by the image cards
+assets/game/icons/           # Twemoji item icons (CC-BY 4.0)
 ```
+
+## 🎮 Salvage
+
+Clanky's own game. Press **🔧 Dig** and Clanky digs through the scrap for something good.
+
+- **Loot**: 44 items across 4 zones, from 🔩 Rusty Bolt (Common) to ☄️ Comet Shard (Legendary). 1 in 150 finds is ✨ shiny and worth 5×.
+- **Progress**: every find gives game XP. Levels unlock new zones (Junk City at 10, Robot Graveyard at 25, Space Dump at 50) and pay credits.
+- **Shop**: spend credits on tools that raise luck, XP and the chance of a double find.
+- **Events**: sometimes a 👾 Scrap Golem (fight or run) or a 📦 Mystery Crate shows up.
+- **Streaks**: the first dig of each day gives a bonus that grows with your streak.
+- **Leaderboards**: `/salvage top` for this server or the whole world. Progress is global.
+
+Balance and content live in [`src/games/salvage/data.ts`](src/games/salvage/data.ts). Add an item by adding one line and dropping its Twemoji SVG in `assets/game/icons/`. All game logic is in `SalvageService` (no Discord code), so the dashboard can reuse it. Loot writes are atomic, so button spam can't duplicate items.
 
 ## 😀 Custom emojis
 

@@ -7,6 +7,7 @@ import { notice, v2 } from '../../ui/components.js';
 import { reply } from '../../ui/respond.js';
 import type { PageId, SettingsCtx, SettingsPage } from './kit.js';
 import { automodPage } from './pages/automod.js';
+import { gamesPage } from './pages/games.js';
 import { generalPage } from './pages/general.js';
 import { homePage } from './pages/home.js';
 import { levelingPage } from './pages/leveling.js';
@@ -17,7 +18,7 @@ import { ticketsPage } from './pages/tickets.js';
 import { welcomePage } from './pages/welcome.js';
 
 const PAGES = new Map<PageId, SettingsPage>(
-  [homePage, generalPage, moderationPage, automodPage, loggingPage, welcomePage, ticketsPage, suggestionsPage, levelingPage].map((p) => [p.id, p]),
+  [homePage, generalPage, moderationPage, automodPage, loggingPage, welcomePage, ticketsPage, suggestionsPage, levelingPage, gamesPage].map((p) => [p.id, p]),
 );
 
 async function renderPage(client: Clanky, guild: Guild, pageId: PageId) {

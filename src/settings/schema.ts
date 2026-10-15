@@ -109,6 +109,12 @@ export const AutomodSettings = z.object({
 
 const Toggle = z.object({ enabled: z.boolean().default(true) });
 
+export const GamesSettings = z.object({
+  enabled: z.boolean().default(true),
+  /** Channels where games can be played. Empty means everywhere. */
+  channelIds: roles(25),
+});
+
 export const GuildSettingsSchema = z.object({
   general: GeneralSettings.prefault({}),
   moderation: ModerationSettings.prefault({}),
@@ -121,6 +127,7 @@ export const GuildSettingsSchema = z.object({
   roles: Toggle.prefault({}),
   reminders: Toggle.prefault({}),
   polls: Toggle.prefault({}),
+  games: GamesSettings.prefault({}),
 });
 
 export type GuildSettings = z.infer<typeof GuildSettingsSchema>;

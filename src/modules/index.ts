@@ -1,5 +1,6 @@
 import type { BotModuleDefinition } from '../core/types.js';
 import { coreModule } from './core/index.js';
+import { gamesModule } from './games/index.js';
 import { levelingModule } from './leveling/index.js';
 import { moderationModule } from './moderation/index.js';
 import { pollsModule } from './polls/index.js';
@@ -23,4 +24,5 @@ export const modules: BotModuleDefinition[] = [
   levelingModule,
   remindersModule,
   pollsModule,
+  gamesModule,
 ];

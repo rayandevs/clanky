@@ -2,6 +2,25 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## [0.1.0-beta.3] — 2026-10-15
+
+### Added
+- **Games module** with **Salvage**, Clanky's signature game. Press **Dig**, find loot, earn game XP.
+  - 44 items across 4 zones (Scrapyard, Junk City, Robot Graveyard, Space Dump), unlocked by level
+  - 5 rarities, 1-in-150 shiny variants (worth 5×), double finds
+  - Random events: Scrap Golem (fight or run) and Mystery Crate
+  - Tool shop with 5 tools that boost luck, XP and double finds
+  - Bag with "Sell junk" / "Sell everything", collection log, profile with zone travel
+  - Daily streak bonus and level-up credit rewards
+  - Image find cards and a `SALVAGE TOP` leaderboard (this server / global)
+- Progress is global: one profile across every server (`GamePlayer` model)
+- `/settings` → Games page: toggle the module and limit it to certain channels
+- `/salvage` works as a user-installed app too
+
+### Changed
+- Leaderboard renderer accepts a custom title and footer
+- "Delete my data" also removes Salvage progress
+
 ## [0.1.0-beta.2] — 2026-10-15
 
 ### Added

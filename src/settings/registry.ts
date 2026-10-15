@@ -27,6 +27,7 @@ export const MODULES: ModuleInfo[] = [
   { id: 'leveling', name: 'Leveling', emoji: 'level', description: 'Earn XP by chatting and unlock roles.', toggleable: true, hasSettingsPage: true },
   { id: 'roles', name: 'Role Panels', emoji: 'role', description: 'Let members pick their own roles.', toggleable: true, hasSettingsPage: false },
   { id: 'reminders', name: 'Reminders', emoji: 'reminder', description: 'Personal reminders.', toggleable: true, hasSettingsPage: false },
+  { id: 'games', name: 'Games', emoji: 'game', description: 'Play Salvage: dig up loot, level up and collect.', toggleable: true, hasSettingsPage: true },
   { id: 'polls', name: 'Polls', emoji: 'poll', description: 'Quick native Discord polls.', toggleable: true, hasSettingsPage: false },
 ];
 
