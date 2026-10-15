@@ -28,7 +28,7 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.6', label: 'v0.1.0 Beta 6', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.7', label: 'v0.1.0 Beta 7', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
   dashboard: { version: { raw: '0.1.0-alpha.1', label: 'v0.1.0 Alpha 1', codename: 'Scrapyard' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
@@ -172,6 +172,7 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.7', date: '2026-10-15', title: 'The dashboard is here 🖥️', highlights: ['Change every setting from the web dashboard', 'See your Salvage profile, bag and collection online', 'Server overview with stats and change history'] },
     { version: '0.1.0-beta.6', date: '2026-10-15', title: 'Image screens 🖼️', highlights: ['Bag, shop and collection are now image cards', 'Your bag, credits, zone and boosts show on every game card', 'Shop buttons are numbered to match each row'] },
     { version: '0.1.0-beta.5', date: '2026-10-15', title: 'The big shop update 🛒', highlights: ['Black Market with 3 new deals every day', 'Upgrades, boosts and crates', 'Profile themes, titles and badges'] },
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
