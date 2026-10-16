@@ -240,14 +240,14 @@ function OverviewPage({ data }: { data: Overview }) {
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
-        <Leaders title="Top chatters" emoji="⭐" rows={data.topLevels.map((r) => ({ user: r.user, main: `Level ${r.level}`, sub: `${n(r.messages)} messages` }))} empty="Turn on Leveling to start tracking XP." />
+        <Leaders title="Top chatters" emoji="💬" rows={data.topChatters.map((r) => ({ user: r.user, main: `${n(r.messages)} messages`, sub: `Level ${r.level} · ${n(r.xp)} XP` }))} empty="Message activity will appear here as members chat." />
         <Leaders title="Top salvagers" emoji="🔧" rows={data.topPlayers.map((r) => ({ user: r.user, main: `Level ${r.level}`, sub: `${n(r.xp)} game XP` }))} empty="Nobody has played Salvage here yet." />
       </div>
     </div>
   );
 }
 
-function Leaders({ title, emoji, rows, empty }: { title: string; emoji: string; rows: Array<{ user: Overview['topLevels'][number]['user']; main: string; sub: string }>; empty: string }) {
+function Leaders({ title, emoji, rows, empty }: { title: string; emoji: string; rows: Array<{ user: Overview['topChatters'][number]['user']; main: string; sub: string }>; empty: string }) {
   const medal = ['🥇', '🥈', '🥉'];
   return (
     <Panel title={title} emoji={emoji}>

@@ -12,6 +12,15 @@ const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString
 
 let loggedIn = true;
 const postedTicketPanels = new Map<string, NonNullable<SettingsPayload['postedTicketPanels']>>();
+const demoSeasons = new Map<string, Array<{ seasonId: string; name: string; active: boolean; startedAt: string; endedAt: string | null; rewardRoleId: string | null; rewardTopCount: number }>>();
+
+function seasonsFor(guildId: string) {
+  if (!demoSeasons.has(guildId)) demoSeasons.set(guildId, [
+    { seasonId: '11111111-1111-4111-8111-111111111111', name: 'Autumn Sprint', active: true, startedAt: hoursAgo(24 * 9), endedAt: null, rewardRoleId: id(54), rewardTopCount: 3 },
+    { seasonId: '22222222-2222-4222-8222-222222222222', name: 'Summer Scramble', active: false, startedAt: hoursAgo(24 * 70), endedAt: hoursAgo(24 * 40), rewardRoleId: id(55), rewardTopCount: 3 },
+  ]);
+  return demoSeasons.get(guildId)!;
+}
 
 const MODULES: Meta['modules'] = [
   { id: 'general', name: 'General', emoji: 'settings', description: 'Look and feel, update notes and modules.', toggleable: false, hasSettingsPage: true },
@@ -29,8 +38,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.9', label: 'v0.1.0 Beta 9', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-alpha.3', label: 'v0.1.0 Alpha 3', codename: 'Scrapyard' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.10', label: 'v0.1.0 Beta 10', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-alpha.4', label: 'v0.1.0 Alpha 4', codename: 'Scrapyard' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -102,7 +111,9 @@ const defaults = (): GuildSettings => ({
   suggestions: { enabled: true, channelId: id(23), reviewerRoleIds: [id(52)], anonymous: false, createThreads: true },
   leveling: {
     enabled: true, announce: 'current', announceChannelId: null, message: 'GG {user}, you reached **level {level}**! ⭐', xpMin: 15, xpMax: 25, cooldownSeconds: 60,
-    ignoredChannelIds: [id(24)], rewards: [{ level: 5, roleId: id(56) }, { level: 20, roleId: id(55) }, { level: 50, roleId: id(54) }], stackRewards: true,
+    curvePreset: 'classic', minMessageLength: 0, ignoredChannelIds: [id(24)], channelMultipliers: [{ channelId: id(22), multiplier: 1.5 }], roleMultipliers: [{ roleId: id(56), multiplier: 1.25 }],
+    rewards: [{ level: 5, roleId: id(56) }, { level: 20, roleId: id(55) }, { level: 50, roleId: id(54) }], stackRewards: true,
+    rankCard: { theme: 'midnight', accentColor: null, showServerIcon: true, showRank: true, showMessages: true, showXp: true },
   },
   automod: { enabled: true, alertChannelId: id(45), mentionLimit: 5, blockedWords: ['scam*', 'free nitro'], rules: { invites: 'r1', mentionSpam: 'r2', spam: null, keywords: 'r4' } },
   roles: { enabled: true },
@@ -141,7 +152,7 @@ function overview(guildId: string): Overview {
       { section: 'leveling', source: 'dashboard', actor: people[0]!, createdAt: hoursAgo(30) },
       { section: 'tickets', source: 'bot', actor: people[2]!, createdAt: hoursAgo(72) },
     ],
-    topLevels: people.slice(0, 5).map((user, i) => ({ user, level: 42 - i * 6, xp: 98_000 - i * 17_000, messages: 12_400 - i * 2_100 })),
+    topChatters: people.slice(1, 6).map((user, i) => ({ user, messages: 18_400 - i * 2_350, level: 38 - i * 5, xp: 81_000 - i * 14_000 })),
     topPlayers: people.slice(2, 7).map((user, i) => ({ user, level: 38 - i * 5, xp: 61_000 - i * 9_000 })),
   };
 }
@@ -177,6 +188,7 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.10', date: '2026-10-16', title: 'A more personal leveling system ⭐', highlights: ['Choose a progression pace without resetting existing levels', 'Track every human message and view leveling activity', 'Customize rank cards and compete in seasons'] },
     { version: '0.1.0-beta.9', date: '2026-10-16', title: 'A clearer ticket desk 🎫', highlights: ['Choose custom, built-in, or no panel artwork', 'Read searchable ticket transcripts with archived attachments retained for the configured period', 'Keep tickets open if transcript messages or attachments cannot be safely archived'] },
     { version: '0.1.0-beta.8', date: '2026-10-16', title: 'A better ticket desk 🎫', highlights: ['Configure up to three ticket panels with custom intake forms and routing', 'A redesigned dashboard editor with previews and tracked panel updates', 'Canvas artwork on support panels and newly opened tickets'] },
     { version: '0.1.0-beta.7', date: '2026-10-15', title: 'The dashboard is here 🖥️', highlights: ['Change every setting from the web dashboard', 'See your Salvage profile, bag and collection online', 'Server overview with stats and change history'] },
@@ -185,6 +197,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-alpha.4', date: '2026-10-16', title: 'A more personal leveling system', highlights: ['Tune progression and XP rules', 'Review messages, XP, and active-member analytics', 'Run manual seasons and preview reward changes'] },
     { version: '0.1.0-alpha.3', date: '2026-10-16', title: 'A clearer ticket desk', highlights: ['Browse closed ticket transcripts with role-checked access for server administrators and ticket staff', 'Attachment files are archived and retained with each transcript instead of relying only on expiring Discord links', 'Choose panel artwork, transcript retention, and custom dashboard uploads in ticket settings'] },
     { version: '0.1.0-alpha.2', date: '2026-10-16', title: 'A better ticket desk', highlights: ['A panel-first ticket editor for up to three support entry points', 'Custom questions, topic options, and per-panel routing in one focused workspace', 'Live Discord preview and save-aware publish/update controls'] },
     { version: '0.1.0-alpha.1', date: '2026-10-15', title: 'First light 🔦', highlights: ['Log in with Discord', 'Every server setting in one place', 'Server overview with stats and history', 'Your Salvage profile, bag and collection', 'Personal preferences'] },
@@ -225,6 +238,47 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
       (s as unknown as Record<string, unknown>)[section] = { ...(s[section] as object), ...(body as object), ...(section === 'automod' ? { rules: s.automod.rules } : {}) };
       return ok({ settings: s });
     }
+    if (c === 'leveling' && d === 'analytics' && method === 'GET') {
+      const params = new URLSearchParams(path.split('?')[1] ?? '');
+      const count = Math.max(7, Math.min(90, Number(params.get('days')) || 14));
+      const days = Array.from({ length: count }, (_, i) => {
+        const date = new Date();
+        date.setUTCDate(date.getUTCDate() - (count - i - 1));
+        const wave = (i * 17 + 31) % 47;
+        return { day: date.toISOString().slice(0, 10), messages: 420 + wave * 13, xp: 6800 + wave * 173, activeMembers: 74 + wave };
+      });
+      const topGainers = people.slice(0, 5).map((user, i) => ({ userId: user.id, xp: 15_800 - i * 2_100, messages: 1_840 - i * 230, user }));
+      const seasons = seasonsFor(b).slice().sort((a, x) => x.startedAt.localeCompare(a.startedAt));
+      const season = seasons.find((item) => item.active) ?? null;
+      const entries = season ? people.slice(0, 10).map((user, i) => ({ rank: i + 1, xp: 72_400 - i * 6_700, user })) : [];
+      return ok({ days, summary: { messages: days.reduce((sum, row) => sum + row.messages, 0), xp: days.reduce((sum, row) => sum + row.xp, 0), activeMembers: 287 }, topGainers, seasons, seasonLeaderboard: { season, total: season ? 164 : 0, entries } });
+    }
+    if (c === 'leveling' && d === 'seasons' && method === 'POST' && !e) {
+      const request = body as { name: string; rewardRoleId: string | null; rewardTopCount: number };
+      const seasons = seasonsFor(b);
+      if (seasons.some((season) => season.active)) throw new ApiError(409, 'End the active season before starting another.', 'conflict');
+      const season = { seasonId: '33333333-3333-4333-8333-333333333333', name: request.name, active: true, startedAt: new Date().toISOString(), endedAt: null, rewardRoleId: request.rewardRoleId, rewardTopCount: request.rewardTopCount };
+      seasons.unshift(season);
+      return ok({ season });
+    }
+    if (c === 'leveling' && d === 'seasons' && e === 'end' && method === 'POST') {
+      const season = seasonsFor(b).find((item) => item.active);
+      if (!season) throw new ApiError(404, 'There is no active season to end.', 'not_found');
+      season.active = false;
+      season.endedAt = new Date().toISOString();
+      return ok({ season });
+    }
+    if (c === 'leveling' && d === 'rewards' && e === 'preview' && method === 'POST') {
+      return ok({ membersChecked: 614, membersSkipped: 11, membersChanged: 27, rolesAdded: 19, rolesRemoved: 8, rolesNotAssignable: [], changes: people.slice(0, 5).map((user, i) => ({ userId: user.id, add: i % 2 ? [id(56)] : [], remove: i % 2 ? [] : [id(55)] })) });
+    }
+    if (c === 'leveling' && d === 'rewards' && e === 'sync' && method === 'POST') return ok({ membersChanged: 27, rolesAdded: 19, rolesRemoved: 8 });
+    if (c === 'leveling' && d === 'season-rewards' && e === 'preview' && method === 'POST') {
+      const { seasonId } = body as { seasonId: string };
+      const season = seasonsFor(b).find((item) => item.seasonId === seasonId);
+      if (!season) throw new ApiError(404, 'Season not found.', 'not_found');
+      return ok({ season, winners: people.slice(0, season.rewardTopCount).map((user, i) => ({ rank: i + 1, xp: 72_400 - i * 12_600, user })) });
+    }
+    if (c === 'leveling' && d === 'season-rewards' && e === 'grant' && method === 'POST') return ok({ granted: 3, winners: 3 });
     if (c === 'automod' && d) {
       const kind = d as RuleKind;
       const { enabled } = body as { enabled: boolean };

@@ -38,6 +38,7 @@ export const levelingPage: SettingsPage = {
     const summary = [
       `**Status** · ${status(s.enabled)}`,
       `${emoji('xp')} **XP per message** · ${s.xpMin}–${s.xpMax} every ${s.cooldownSeconds}s`,
+      `**Progression curve** · ${s.curvePreset} · messages need ${s.minMessageLength || 'no'} characters`,
       `${emoji('bell')} **Level-ups** · ${ANNOUNCE_LABELS[s.announce]}${s.announce === 'channel' ? ` (${channelMention(s.announceChannelId)})` : ''}`,
       `${emoji('message')} **Message** · ${truncate(s.message, 100)}`,
       `${emoji('trophy')} **Rewards** · ${rewards.length ? rewards.map((r) => `Lv ${r.level} → <@&${r.roleId}>`).join(', ') : '`None`'}`,
@@ -71,6 +72,18 @@ export const levelingPage: SettingsPage = {
     if (s.announce === 'channel') {
       container.addActionRowComponents(channelPicker(env, 'leveling', 'channel', { current: s.announceChannelId, placeholder: 'Level-up channel' }));
     }
+    container.addActionRowComponents(
+      row(
+        new StringSelectMenuBuilder()
+          .setCustomId(sid('leveling', 'curve'))
+          .setPlaceholder('Progression curve')
+          .addOptions([
+            { label: 'Relaxed', value: 'relaxed', description: 'Reach each level with about 25% less XP', default: s.curvePreset === 'relaxed' },
+            { label: 'Classic', value: 'classic', description: 'Clanky’s original progression pace', default: s.curvePreset === 'classic' },
+            { label: 'Challenging', value: 'challenging', description: 'Reach each level with about 50% more XP', default: s.curvePreset === 'challenging' },
+          ]),
+      ),
+    );
     container.addActionRowComponents(
       channelPicker(env, 'leveling', 'ignore', { current: s.ignoredChannelIds, placeholder: 'Channels with no XP', max: 25 }),
     );
@@ -106,6 +119,9 @@ export const levelingPage: SettingsPage = {
       case 'announce':
         await save(ctx, (d) => void (d.leveling.announce = selectedIds(interaction)[0] as typeof d.leveling.announce));
         return 'render';
+      case 'curve':
+        await save(ctx, (d) => void (d.leveling.curvePreset = selectedIds(interaction)[0] as typeof d.leveling.curvePreset));
+        return 'render';
       case 'channel':
         await save(ctx, (d) => void (d.leveling.announceChannelId = selectedIds(interaction)[0] ?? null));
         return 'render';
@@ -129,6 +145,7 @@ export const levelingPage: SettingsPage = {
               new LabelBuilder().setLabel('Minimum XP per message').setDescription('1 to 100').setTextInputComponent(input('min', String(s.xpMin))),
               new LabelBuilder().setLabel('Maximum XP per message').setDescription('1 to 200').setTextInputComponent(input('max', String(s.xpMax))),
               new LabelBuilder().setLabel('Cooldown in seconds').setDescription('0 to 3600').setTextInputComponent(input('cooldown', String(s.cooldownSeconds))),
+              new LabelBuilder().setLabel('Minimum message characters for XP').setDescription('0 to 500; message counts are still tracked').setTextInputComponent(input('minLength', String(s.minMessageLength), 3)),
               new LabelBuilder()
                 .setLabel('Level-up message')
                 .setDescription('Use {user} and {level}')
@@ -143,12 +160,13 @@ export const levelingPage: SettingsPage = {
         const min = intIn(f.getTextInputValue('min'), 1, 100);
         const max = intIn(f.getTextInputValue('max'), 1, 200);
         const cooldown = intIn(f.getTextInputValue('cooldown'), 0, 3600);
-        if (min === null || max === null || cooldown === null || min > max) {
+        const minLength = intIn(f.getTextInputValue('minLength'), 0, 500);
+        if (min === null || max === null || cooldown === null || minLength === null || min > max) {
           await reply(interaction, 'error', 'Please check the numbers. Minimum XP must be lower than maximum XP.');
           return 'done';
         }
         await save(ctx, (d) => {
-          Object.assign(d.leveling, { xpMin: min, xpMax: max, cooldownSeconds: cooldown });
+          Object.assign(d.leveling, { xpMin: min, xpMax: max, cooldownSeconds: cooldown, minMessageLength: minLength });
           d.leveling.message = f.getTextInputValue('message').trim() || d.leveling.message;
         });
         return 'render';

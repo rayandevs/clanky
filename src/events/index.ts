@@ -10,7 +10,7 @@ import { handleLevelingMessage } from '../modules/leveling/handler.js';
 import { logMemberJoin, logMemberLeave, logMemberUpdate, logMessageDelete, logMessageEdit } from '../modules/logging/index.js';
 import { startReminderScheduler } from '../modules/reminders/index.js';
 import { handleMemberJoin, handleMemberLeave, handleMemberScreeningPassed } from '../modules/welcome/index.js';
-import { guilds } from '../services/index.js';
+import { guilds, levels } from '../services/index.js';
 import { panel, v2, withFooter } from '../ui/components.js';
 
 const log = createLogger('events');
@@ -83,8 +83,9 @@ export function registerEvents(client: Clanky): void {
   client.on(
     Events.MessageCreate,
     safe('messageCreate', async (message) => {
-      // Clanky has no prefix commands. Messages are only used for XP.
+      // Track human-message activity first; XP eligibility is filtered separately below.
       if (!message.inGuild() || message.author.bot || message.system || message.webhookId) return;
+      await levels.recordMessage(message.guildId, message.author.id).catch((error) => log.warn('Could not record leveling activity', error));
       await handleLevelingMessage(message);
     }),
   );

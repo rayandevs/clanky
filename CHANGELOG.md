@@ -4,6 +4,18 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.10] — 2026-10-16
+
+### Added
+- Configurable relaxed, classic, and challenging XP curves; channel/role multipliers; and a minimum message length for XP eligibility
+- Per-server all-human-message totals and daily message/XP/active-member analytics, while preserving XP-earning message counts separately
+- Season-only XP and a seasonal leaderboard that leaves lifetime levels and XP untouched
+- Rank-card themes, server branding, optional statistics, a reward milestone preview, and preview-first reward-role synchronization
+
+### Changed
+- Existing members keep their current level and fractional progress when the configured progression pace changes
+- The guild overview ranks top chatters by all-message totals rather than XP
+
 ## [0.1.0-beta.9] — 2026-10-16
 
 ### Added

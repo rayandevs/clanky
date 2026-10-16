@@ -139,6 +139,15 @@ export const LevelReward = z.object({
   roleId: snowflake,
 });
 
+export const RankCardSettings = z.object({
+  theme: z.enum(['midnight', 'ember', 'forest', 'violet']).default('midnight'),
+  accentColor: z.number().int().min(0).max(0xffffff).nullable().default(null),
+  showServerIcon: z.boolean().default(true),
+  showRank: z.boolean().default(true),
+  showMessages: z.boolean().default(true),
+  showXp: z.boolean().default(true),
+});
+
 export const LevelingSettings = z.object({
   enabled: z.boolean().default(false),
   announce: z.enum(['off', 'current', 'channel']).default('current'),
@@ -147,9 +156,14 @@ export const LevelingSettings = z.object({
   xpMin: z.number().int().min(1).max(100).default(15),
   xpMax: z.number().int().min(1).max(200).default(25),
   cooldownSeconds: z.number().int().min(0).max(3600).default(60),
+  curvePreset: z.enum(['relaxed', 'classic', 'challenging']).default('classic'),
+  minMessageLength: z.number().int().min(0).max(500).default(0),
   ignoredChannelIds: roles(25),
+  channelMultipliers: z.array(z.object({ channelId: snowflake, multiplier: z.number().min(1).max(3) })).max(25).default([]),
+  roleMultipliers: z.array(z.object({ roleId: snowflake, multiplier: z.number().min(1).max(3) })).max(25).default([]),
   rewards: z.array(LevelReward).max(20).default([]),
   stackRewards: z.boolean().default(true),
+  rankCard: RankCardSettings.default({ theme: 'midnight', accentColor: null, showServerIcon: true, showRank: true, showMessages: true, showXp: true }),
 });
 
 export const AutomodSettings = z.object({

@@ -57,7 +57,7 @@ export interface Overview {
   missing: Array<{ name: string; why: string }>;
   recentCases: Array<{ caseId: number; type: string; target: string; reason: string | null; moderator: UserSummary; createdAt: string }>;
   audit: Array<{ section: string; source: 'bot' | 'dashboard' | 'system'; actor: UserSummary; createdAt: string }>;
-  topLevels: Array<{ user: UserSummary; level: number; xp: number; messages: number }>;
+  topChatters: Array<{ user: UserSummary; messages: number; level: number; xp: number }>;
   topPlayers: Array<{ user: UserSummary; level: number; xp: number }>;
 }
 
@@ -88,9 +88,14 @@ export interface GuildSettings {
     xpMin: number;
     xpMax: number;
     cooldownSeconds: number;
+    curvePreset: 'relaxed' | 'classic' | 'challenging';
+    minMessageLength: number;
     ignoredChannelIds: string[];
+    channelMultipliers: Array<{ channelId: string; multiplier: number }>;
+    roleMultipliers: Array<{ roleId: string; multiplier: number }>;
     rewards: Array<{ level: number; roleId: string }>;
     stackRewards: boolean;
+    rankCard: { theme: 'midnight' | 'ember' | 'forest' | 'violet'; accentColor: number | null; showServerIcon: boolean; showRank: boolean; showMessages: boolean; showXp: boolean };
   };
   automod: {
     enabled: boolean;

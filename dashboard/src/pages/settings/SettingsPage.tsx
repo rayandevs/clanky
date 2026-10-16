@@ -13,6 +13,7 @@ import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKin
 import { cn, hex, MODULE_EMOJI } from '@/lib/utils';
 import { MessagePreview, OffNotice, SectionHeader, TemplateInput, WordList } from './shared';
 import TicketsSettings from './TicketsSettings';
+import LevelingTools from './LevelingTools';
 
 type Props = { guildId: string; data: SettingsPayload };
 
@@ -341,12 +342,25 @@ const fmtSeconds = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}m${s % 60 ? `
 function Leveling({ guildId, data }: Props) {
   const d = useDraft(guildId, 'leveling', data.settings.leveling);
   const accent = useAccent(data);
+  const [previewRewardLevel, setPreviewRewardLevel] = useState(10);
   if (!d.draft) return null;
   const v = d.draft;
-  const sortedRewards = v.rewards;
+  const sortedRewards = v.rewards.map((reward, index) => ({ reward, index })).sort((a, b) => a.reward.level - b.reward.level);
+  const curveScale = v.curvePreset === 'relaxed' ? 0.75 : v.curvePreset === 'challenging' ? 1.5 : 1;
+  const curveRequirement = (level: number) => Math.round((5 * level ** 2 + 50 * level + 100) * curveScale);
+  const curveTotalXp = (targetLevel: number) => Array.from({ length: targetLevel }, (_, level) => curveRequirement(level)).reduce((sum, amount) => sum + amount, 0);
+  const estimatedMessages = (targetLevel: number) => Math.ceil(curveTotalXp(targetLevel) / Math.max(1, (v.xpMin + v.xpMax) / 2));
+  const earnedRewardTiers = sortedRewards.map(({ reward }) => reward).filter((reward) => reward.roleId && reward.level <= previewRewardLevel);
+  const previewRewardTiers = v.stackRewards ? earnedRewardTiers : earnedRewardTiers.slice(-1);
+  const cardThemes = [
+    { value: 'midnight' as const, label: 'Midnight', background: 'linear-gradient(120deg,#111118,#201e2b)' },
+    { value: 'ember' as const, label: 'Ember', background: 'linear-gradient(120deg,#21130f,#3b2118)' },
+    { value: 'forest' as const, label: 'Forest', background: 'linear-gradient(120deg,#0d1c19,#18372e)' },
+    { value: 'violet' as const, label: 'Violet', background: 'linear-gradient(120deg,#171321,#30203f)' },
+  ];
   return (
     <>
-      <SectionHeader emoji="⭐" title="Leveling" description="Members earn XP by chatting and unlock roles." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
+      <SectionHeader emoji="⭐" title="Leveling" description="Tune the XP pace, reward active channels and roles, and style rank cards. All human messages are counted separately from XP." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
       <OffNotice show={!v.enabled}>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
           <Panel title="Level-up message">
@@ -380,6 +394,71 @@ function Leveling({ guildId, data }: Props) {
             <MultiChannelPicker value={v.ignoredChannelIds} onChange={(x) => d.set('ignoredChannelIds', x)} channels={data.resources.channels} placeholder="None" />
           </Field>
         </Panel>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
+          <Panel title="Progression & message rules" description="Choose the pace and decide how long a message must be to earn XP.">
+            <Field label="Leveling curve" description="Existing levels and progress are preserved; this pace applies to the next level and future XP.">
+              <Segmented value={v.curvePreset} onChange={(x) => d.set('curvePreset', x)} options={[{ value: 'relaxed', label: 'Relaxed' }, { value: 'classic', label: 'Classic' }, { value: 'challenging', label: 'Challenging' }]} testId="segment-level-curve" />
+            </Field>
+            <div className="grid grid-cols-3 gap-2 rounded-xl border border-line bg-black/15 p-3 text-center">
+              {[1, 10, 25].map((level) => <div key={level}><p className="stamp text-faint">REACH LEVEL {level}</p><p className="mt-1 font-mono text-[13px] font-bold">{curveTotalXp(level).toLocaleString()} XP</p><p className="text-[10px] text-faint">≈ {estimatedMessages(level).toLocaleString()} eligible messages</p></div>)}
+            </div>
+            <p className="-mt-1 text-[11px] text-faint">Message estimates use the configured average XP and exclude cooldown time and boosts. Existing members keep their current level and progress.</p>
+            <Field label="Minimum message length" description="Only affects XP eligibility. Every human message is still counted for activity statistics.">
+              <Slider value={v.minMessageLength} onChange={(x) => d.set('minMessageLength', x)} min={0} max={200} step={5} suffix=" chars" testId="slider-level-min-length" />
+            </Field>
+          </Panel>
+          <Panel title="XP multipliers" description="Use the strongest matching role boost and strongest channel boost together, capped at 5×.">
+            <p className="stamp mb-1 text-muted">CHANNEL BOOSTS</p>
+            {v.channelMultipliers.map((rule, index) => (
+              <div key={`channel-${index}`} className="flex items-center gap-2 border-b border-line py-2">
+                <div className="min-w-0 flex-1"><ChannelPicker value={rule.channelId || null} onChange={(channelId) => channelId && d.set('channelMultipliers', v.channelMultipliers.map((item, i) => i === index ? { ...item, channelId } : item))} channels={data.resources.channels} placeholder="Choose a channel" /></div>
+                <Input aria-label="Channel XP multiplier" type="number" min={1} max={3} step={0.25} value={rule.multiplier} onChange={(event) => d.set('channelMultipliers', v.channelMultipliers.map((item, i) => i === index ? { ...item, multiplier: Math.max(1, Math.min(3, Number(event.target.value) || 1)) } : item))} className="w-20 text-center font-mono" />
+                <span className="text-[12px] text-faint">×</span>
+                <Button variant="ghost" size="icon" aria-label="Remove channel multiplier" onClick={() => d.set('channelMultipliers', v.channelMultipliers.filter((_, i) => i !== index))}><Trash2 className="size-4" /></Button>
+              </div>
+            ))}
+            <Button size="sm" variant="outline" disabled={v.channelMultipliers.length >= 25} onClick={() => d.set('channelMultipliers', [...v.channelMultipliers, { channelId: '', multiplier: 1.5 }])} className="mt-3"><Plus className="size-3.5" /> Add channel boost</Button>
+            <p className="stamp mb-1 mt-5 text-muted">ROLE BOOSTS</p>
+            {v.roleMultipliers.map((rule, index) => (
+              <div key={`role-${index}`} className="flex items-center gap-2 border-b border-line py-2">
+                <div className="min-w-0 flex-1"><SingleRolePicker value={rule.roleId || null} onChange={(roleId) => d.set('roleMultipliers', v.roleMultipliers.map((item, i) => i === index ? { ...item, roleId } : item))} roles={data.resources.roles} /></div>
+                <Input aria-label="Role XP multiplier" type="number" min={1} max={3} step={0.25} value={rule.multiplier} onChange={(event) => d.set('roleMultipliers', v.roleMultipliers.map((item, i) => i === index ? { ...item, multiplier: Math.max(1, Math.min(3, Number(event.target.value) || 1)) } : item))} className="w-20 text-center font-mono" />
+                <span className="text-[12px] text-faint">×</span>
+                <Button variant="ghost" size="icon" aria-label="Remove role multiplier" onClick={() => d.set('roleMultipliers', v.roleMultipliers.filter((_, i) => i !== index))}><Trash2 className="size-4" /></Button>
+              </div>
+            ))}
+            <Button size="sm" variant="outline" disabled={v.roleMultipliers.length >= 25} onClick={() => d.set('roleMultipliers', [...v.roleMultipliers, { roleId: '', multiplier: 1.5 }])} className="mt-3"><Plus className="size-3.5" /> Add role boost</Button>
+          </Panel>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
+          <Panel title="Rank card style" description="A restrained theme and server-matched accent keep the image polished in Discord.">
+            <Field label="Card theme"><Segmented value={v.rankCard.theme} onChange={(theme) => d.set('rankCard', { ...v.rankCard, theme })} options={cardThemes.map(({ value, label }) => ({ value, label }))} testId="segment-rank-theme" /></Field>
+            <Field label="Accent color" description="Uses the server accent unless a custom color is selected.">
+              <div className="flex items-center gap-3">
+                <input type="color" aria-label="Rank card accent" value={hex(v.rankCard.accentColor ?? data.settings.general.accentColor)} onChange={(event) => d.set('rankCard', { ...v.rankCard, accentColor: parseInt(event.target.value.slice(1), 16) })} className="size-10 cursor-pointer rounded-lg border border-line bg-transparent p-1" />
+                <span className="font-mono text-[12px] text-muted">{hex(v.rankCard.accentColor ?? data.settings.general.accentColor).toUpperCase()}</span>
+                {v.rankCard.accentColor !== null && <Button size="sm" variant="ghost" onClick={() => d.set('rankCard', { ...v.rankCard, accentColor: null })}>Use server accent</Button>}
+              </div>
+            </Field>
+            <Field inline label="Show rank" description="Include the member's leaderboard position."><Switch checked={v.rankCard.showRank} onChange={(showRank) => d.set('rankCard', { ...v.rankCard, showRank })} label="Show rank" /></Field>
+            <Field inline label="Show server icon" description="Adds a small server mark in the card header."><Switch checked={v.rankCard.showServerIcon} onChange={(showServerIcon) => d.set('rankCard', { ...v.rankCard, showServerIcon })} label="Show server icon" /></Field>
+            <Field inline label="Show XP progress" description="Show current XP and the progress bar to the next level."><Switch checked={v.rankCard.showXp} onChange={(showXp) => d.set('rankCard', { ...v.rankCard, showXp })} label="Show XP" /></Field>
+            <Field inline label="Show tracked messages" description="Display total human messages since message tracking began."><Switch checked={v.rankCard.showMessages} onChange={(showMessages) => d.set('rankCard', { ...v.rankCard, showMessages })} label="Show messages" /></Field>
+          </Panel>
+          <div>
+            <p className="stamp mb-2 text-muted">LIVE PREVIEW</p>
+            <div className="relative aspect-[10/3] min-h-44 overflow-hidden rounded-3xl border border-line p-[5%] shadow-2xl" style={{ background: cardThemes.find((theme) => theme.value === v.rankCard.theme)?.background }}>
+              <div className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: hex(v.rankCard.accentColor ?? data.settings.general.accentColor) }} />
+              <div className="flex h-full items-center gap-[4%]">
+                <div className="grid aspect-square h-[70%] place-items-center rounded-full border-[5px] bg-black/20 text-2xl font-bold text-white" style={{ borderColor: hex(v.rankCard.accentColor ?? data.settings.general.accentColor) }}>N</div>
+                <div className="min-w-0 flex-1 text-white"><p className="truncate text-[clamp(14px,2.3vw,28px)] font-bold">Nadia</p><p className="truncate text-[clamp(10px,1.1vw,14px)] text-white/55">@nadia</p>{v.rankCard.showXp && <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-2/3 rounded-full" style={{ backgroundColor: hex(v.rankCard.accentColor ?? data.settings.general.accentColor) }} /></div>}{v.rankCard.showMessages && <p className="mt-2 text-[clamp(9px,1vw,12px)] text-white/55">12,400 messages tracked</p>}</div>
+                <div className="flex flex-col items-end gap-1 text-right">{v.rankCard.showRank && <span className="text-[clamp(10px,1vw,14px)] text-white/60">RANK</span>}<strong className="text-[clamp(18px,2.7vw,34px)] text-white">{v.rankCard.showRank ? '#4' : ''}</strong><span className="mt-1 text-[clamp(10px,1vw,14px)] text-white/60">LEVEL 42</span></div>
+              </div>
+              {v.rankCard.showServerIcon && <span className="absolute right-4 top-3 grid size-7 place-items-center rounded-full bg-white/10 text-[10px] font-bold text-white/70">S</span>}
+            </div>
+            <p className="mt-2 text-[12px] text-faint">Preview is illustrative; `/rank` renders the final canvas card using the member's real statistics.</p>
+          </div>
+        </div>
         <Panel
           title="Role rewards"
           description="Members get these roles when they reach a level."
@@ -390,14 +469,15 @@ function Leveling({ guildId, data }: Props) {
           }
         >
           {sortedRewards.length === 0 && <p className="py-5 text-[14px] text-faint">No rewards yet.</p>}
-          {sortedRewards.map((r, i) => (
-            <div key={i} className="flex items-center gap-3 py-3">
+          {sortedRewards.map(({ reward: r, index }, i) => (
+            <div key={index} className="relative flex items-center gap-3 border-l-2 border-rust-400/30 py-3 pl-4">
               <span className="stamp w-12 text-muted">Level</span>
-              <Input type="number" min={1} max={500} value={r.level} onChange={(e) => d.set('rewards', v.rewards.map((x, j) => (j === i ? { ...x, level: Math.max(1, Math.min(500, Number(e.target.value) || 1)) } : x)))} className="w-24 font-mono" data-testid={`input-reward-level-${i}`} />
+              <Input type="number" min={1} max={500} value={r.level} onChange={(e) => d.set('rewards', v.rewards.map((x, j) => (j === index ? { ...x, level: Math.max(1, Math.min(500, Number(e.target.value) || 1)) } : x)))} className="w-24 font-mono" data-testid={`input-reward-level-${i}`} />
               <div className="flex-1">
-                <SingleRolePicker value={r.roleId || null} onChange={(roleId) => d.set('rewards', v.rewards.map((x, j) => (j === i ? { ...x, roleId } : x)))} roles={data.resources.roles} testId={`picker-reward-role-${i}`} />
+                <SingleRolePicker value={r.roleId || null} onChange={(roleId) => d.set('rewards', v.rewards.map((x, j) => (j === index ? { ...x, roleId } : x)))} roles={data.resources.roles} testId={`picker-reward-role-${i}`} />
+                {r.roleId && !data.resources.roles.some((role) => role.id === r.roleId) && <p className="mt-1 text-[11px] text-hazard">This role no longer exists in the server.</p>}
               </div>
-              <Button variant="ghost" size="icon" aria-label="Remove reward" onClick={() => d.set('rewards', v.rewards.filter((_, j) => j !== i))}>
+              <Button variant="ghost" size="icon" aria-label="Remove reward" onClick={() => d.set('rewards', v.rewards.filter((_, j) => j !== index))}>
                 <Trash2 className="size-4" />
               </Button>
             </div>
@@ -405,15 +485,21 @@ function Leveling({ guildId, data }: Props) {
           <Field inline label="Keep old rewards" description="Off means members only keep their highest reward role.">
             <Switch checked={v.stackRewards} onChange={(x) => d.set('stackRewards', x)} label="Keep old rewards" />
           </Field>
+          <div className="mt-4 rounded-2xl border border-line bg-black/15 p-4">
+            <p className="stamp text-muted">PREVIEW MEMBER REWARDS</p>
+            <div className="mt-2 flex flex-wrap items-center gap-3"><span className="text-[13px] text-muted">Member at level</span><Input type="number" min={0} max={500} value={previewRewardLevel} onChange={(event) => setPreviewRewardLevel(Math.max(0, Math.min(500, Number(event.target.value) || 0)))} className="w-24 font-mono" data-testid="input-preview-reward-level" /><span className="text-[12px] text-faint">{v.stackRewards ? 'receives every earned tier' : 'keeps only their highest earned tier'}</span></div>
+            <div className="mt-3 flex flex-wrap gap-2">{previewRewardTiers.length ? previewRewardTiers.map((reward) => <span key={`${reward.level}-${reward.roleId}`} className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/[0.05] px-2.5 py-1 text-[12px]"><span className="font-mono text-rust-300">L{reward.level}</span>{data.resources.roles.find((role) => role.id === reward.roleId)?.name ?? 'Role removed'}</span>) : <span className="text-[12px] text-faint">No reward role is earned at this level.</span>}</div>
+          </div>
         </Panel>
       </OffNotice>
       <SaveBar
         dirty={d.dirty}
         saving={d.saving}
         // Drop unfinished rows instead of failing validation.
-        onSave={() => d.save((x) => ({ ...x, rewards: x.rewards.filter((r) => r.roleId) }))}
+        onSave={() => d.save((x) => ({ ...x, rewards: x.rewards.filter((r) => r.roleId), channelMultipliers: x.channelMultipliers.filter((r) => r.channelId), roleMultipliers: x.roleMultipliers.filter((r) => r.roleId) }))}
         onReset={d.reset}
       />
+      <LevelingTools guildId={guildId} roles={data.resources.roles} rewardSettingsUnsaved={d.dirty} />
     </>
   );
 }

@@ -4,6 +4,12 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-alpha.4 · Scrapyard · 2026-10-16
+
+- Leveling workspace with progression previews, channel and role boosts, rank-card styling, and a member reward preview
+- Activity charts for messages, XP, and active members, plus message-sorted top chatters and top XP gainers
+- Preview-before-sync role maintenance and manual seasons with live seasonal standings and reviewed winner rewards
+
 ## 0.1.0-alpha.3 · Scrapyard · 2026-10-16
 
 - Search closed ticket transcripts and review intake answers, messages, embeds, and permission-checked attachment archives retained for the configured period

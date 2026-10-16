@@ -8,7 +8,8 @@ import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketMode
 import { canManageAutomod, deleteRule, RULE_KINDS, ruleStates, syncAllRules, upsertRule, type RuleKind } from '../../modules/automod/service.js';
 import { listTicketPanelMessages, publishTicketPanel } from '../../modules/tickets/panels.js';
 import { MAX_TRANSCRIPT_ATTACHMENT_BYTES, readArchivedTranscriptAttachment } from '../../modules/tickets/attachmentArchive.js';
-import { guilds, salvage } from '../../services/index.js';
+import { guilds, levels, salvage } from '../../services/index.js';
+import { desiredRewardRoleIds } from '../../modules/leveling/handler.js';
 import { MODULES } from '../../settings/registry.js';
 import { GuildSettingsSchema, type GuildSettings, type SettingsSection } from '../../settings/schema.js';
 import { canManage, inviteUrl, managedGuild } from '../access.js';
@@ -147,7 +148,7 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
     const record = await guilds.get(guild.id);
     const since = new Date(Date.now() - 14 * DAY);
 
-    const [casesTotal, casesWeek, openTickets, pendingSuggestions, ranked, casesByDay, ticketsByDay, recentCases, audit, topLevels, board] =
+    const [casesTotal, casesWeek, openTickets, pendingSuggestions, ranked, casesByDay, ticketsByDay, recentCases, audit, topChatters, board] =
       await Promise.all([
         CaseModel.countDocuments({ guildId: guild.id }),
         CaseModel.countDocuments({ guildId: guild.id, createdAt: { $gte: new Date(Date.now() - 7 * DAY) } }),
@@ -158,7 +159,7 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
         perDay(TicketModel, guild.id, since),
         CaseModel.find({ guildId: guild.id }).sort({ createdAt: -1 }).limit(6).lean(),
         SettingsAuditModel.find({ guildId: guild.id }).sort({ createdAt: -1 }).limit(8).lean(),
-        MemberModel.find({ guildId: guild.id, xp: { $gt: 0 } }).sort({ xp: -1 }).limit(5).lean(),
+        MemberModel.find({ guildId: guild.id, messages: { $gt: 0 } }).sort({ messages: -1 }).limit(5).lean(),
         salvage.leaderboard(guild.id, 0, 5),
       ]);
 
@@ -183,7 +184,7 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
       audit: await Promise.all(
         audit.map(async (a) => ({ section: a.section, source: a.source, actor: await userSummary(client, a.actorId), createdAt: a.createdAt })),
       ),
-      topLevels: await Promise.all(topLevels.map(async (m) => ({ user: await userSummary(client, m.userId), level: m.level, xp: m.xp, messages: m.messages }))),
+      topChatters: await Promise.all(topChatters.map(async (m) => ({ user: await userSummary(client, m.userId), messages: m.messages, level: m.level, xp: m.xp }))),
       topPlayers: await Promise.all(board.entries.map(async (p) => ({ user: await userSummary(client, p.userId), level: p.level, xp: p.xp }))),
     };
   });
@@ -244,6 +245,159 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
       await syncAllRules(guild, await guilds.settings(guild.id));
     }
     return { settings: await guilds.settings(guild.id) };
+  });
+
+  app.get('/api/guilds/:guildId/leveling/analytics', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { days = 14 } = z.object({ days: z.coerce.number().int().min(7).max(90).default(14) }).parse(request.query);
+    const [analytics, seasons, seasonalBoard] = await Promise.all([
+      levels.analytics(access.guild.id, days),
+      levels.listSeasons(access.guild.id, 5),
+      levels.seasonLeaderboard(access.guild.id, 0, 10),
+    ]);
+    return {
+      ...analytics,
+      topGainers: await Promise.all(analytics.topGainers.map(async (row) => ({ ...row, user: await userSummary(client, row.userId) }))),
+      seasons,
+      seasonLeaderboard: {
+        season: seasonalBoard.season,
+        total: seasonalBoard.total,
+        entries: await Promise.all(seasonalBoard.entries.map(async (entry, index) => ({ rank: index + 1, xp: entry.xp, user: await userSummary(client, entry.userId) }))),
+      },
+    };
+  });
+
+  app.post('/api/guilds/:guildId/leveling/seasons', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const body = z.object({ name: z.string().trim().min(1).max(80), rewardRoleId: z.string().regex(/^\d{17,20}$/).nullable().default(null), rewardTopCount: z.number().int().min(1).max(100).default(3) }).parse(request.body);
+    if (body.rewardRoleId) {
+      const role = access.guild.roles.cache.get(body.rewardRoleId);
+      if (!role || role.managed || !access.guild.members.me || role.position >= access.guild.members.me.roles.highest.position) {
+        return reply.code(400).send({ error: 'invalid', message: 'Choose a reward role Clanky can assign.' });
+      }
+    }
+    try {
+      const season = await levels.startSeason(access.guild.id, body.name, access.member.id, body.rewardRoleId, body.rewardTopCount);
+      return { season };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('already active')) return reply.code(409).send({ error: 'conflict', message: error.message });
+      throw error;
+    }
+  });
+
+  app.post('/api/guilds/:guildId/leveling/seasons/end', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { confirm } = z.object({ confirm: z.literal(true) }).parse(request.body);
+    void confirm;
+    const season = await levels.endSeason(access.guild.id);
+    if (!season) return reply.code(404).send({ error: 'not_found', message: 'There is no active season to end.' });
+    return { season };
+  });
+
+  app.post('/api/guilds/:guildId/leveling/season-rewards/preview', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { seasonId } = z.object({ seasonId: z.string().uuid() }).parse(request.body);
+    const season = await levels.seasonLeaderboard(access.guild.id, 0, 100, seasonId);
+    if (!season.season || season.season.active) return reply.code(400).send({ error: 'invalid', message: 'End the season before reviewing winner rewards.' });
+    const winners = await levels.seasonRewardsPreview(access.guild.id, seasonId, season.season.rewardTopCount);
+    return { season: season.season, winners: await Promise.all(winners.map(async (winner) => ({ ...winner, user: await userSummary(client, winner.userId) }))) };
+  });
+
+  app.post('/api/guilds/:guildId/leveling/season-rewards/grant', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { seasonId, confirm } = z.object({ seasonId: z.string().uuid(), confirm: z.literal(true) }).parse(request.body);
+    const season = await levels.seasonLeaderboard(access.guild.id, 0, 100, seasonId);
+    if (!season.season || season.season.active) return reply.code(400).send({ error: 'invalid', message: 'End the season before granting rewards.' });
+    if (!season.season.rewardRoleId) return reply.code(400).send({ error: 'invalid', message: 'No winner role was configured for this season.' });
+    if (!access.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) return reply.code(400).send({ error: 'permissions', message: 'Clanky needs Manage Roles to grant season rewards.' });
+    const role = access.guild.roles.cache.get(season.season.rewardRoleId);
+    if (!role || role.managed || role.position >= access.guild.members.me.roles.highest.position) return reply.code(400).send({ error: 'invalid', message: 'The configured winner role is no longer assignable.' });
+    const winners = await levels.seasonRewardsPreview(access.guild.id, seasonId, season.season.rewardTopCount);
+    let granted = 0;
+    for (const winner of winners) {
+      const member = await access.guild.members.fetch(winner.userId).catch(() => null);
+      if (!member || member.roles.cache.has(role.id)) continue;
+      await member.roles.add(role, `Season winner: ${season.season.name}`).then(() => granted++).catch((error) => log.warn('Could not grant a season reward role', error));
+    }
+    void confirm;
+    return { granted, winners: winners.length };
+  });
+
+  app.post('/api/guilds/:guildId/leveling/rewards/preview', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const settings = await guilds.settings(access.guild.id);
+    const botMember = access.guild.members.me;
+    const roleIds = new Set(settings.leveling.rewards.map((reward) => reward.roleId));
+    const rolesNotAssignable = [...roleIds].filter((id) => {
+      const role = access.guild.roles.cache.get(id);
+      return !role || role.managed || !botMember || role.position >= botMember.roles.highest.position;
+    });
+    const records = await MemberModel.find({ guildId: access.guild.id, xp: { $gt: 0 } }).select({ userId: 1, level: 1 }).sort({ level: -1 }).lean();
+    const operations: Array<{ userId: string; add: string[]; remove: string[] }> = [];
+    const members = new Map<string, import('discord.js').GuildMember>();
+    for (let index = 0; index < records.length; index += 100) {
+      const batch = records.slice(index, index + 100);
+      const fetched = await access.guild.members.fetch({ user: batch.map((record) => record.userId) }).catch(() => null);
+      fetched?.forEach((member) => members.set(member.id, member));
+    }
+    let skipped = 0;
+    for (const record of records) {
+      const member = members.get(record.userId);
+      if (!member) { skipped++; continue; }
+      const desired = new Set(desiredRewardRoleIds(record.level, settings));
+      const assignable = (id: string) => {
+        const role = access.guild.roles.cache.get(id);
+        return Boolean(role && !role.managed && botMember && role.position < botMember.roles.highest.position);
+      };
+      const add = [...desired].filter((id) => assignable(id) && !member.roles.cache.has(id));
+      const remove = [...roleIds].filter((id) => assignable(id) && !desired.has(id) && member.roles.cache.has(id));
+      if (add.length || remove.length) operations.push({ userId: member.id, add, remove });
+    }
+    return { membersChecked: records.length, membersSkipped: skipped, membersChanged: operations.length, rolesAdded: operations.reduce((sum, item) => sum + item.add.length, 0), rolesRemoved: operations.reduce((sum, item) => sum + item.remove.length, 0), rolesNotAssignable, changes: operations.slice(0, 10) };
+  });
+
+  app.post('/api/guilds/:guildId/leveling/rewards/sync', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { confirm } = z.object({ confirm: z.literal(true) }).parse(request.body);
+    void confirm;
+    if (!access.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) return reply.code(400).send({ error: 'permissions', message: 'Clanky needs Manage Roles to synchronize reward roles.' });
+    const settings = await guilds.settings(access.guild.id);
+    const botMember = access.guild.members.me;
+    const roles = new Set(settings.leveling.rewards.map((reward) => reward.roleId));
+    const records = await MemberModel.find({ guildId: access.guild.id, xp: { $gt: 0 } }).select({ userId: 1, level: 1 }).lean();
+    const members = new Map<string, import('discord.js').GuildMember>();
+    for (let index = 0; index < records.length; index += 100) {
+      const fetched = await access.guild.members.fetch({ user: records.slice(index, index + 100).map((record) => record.userId) }).catch(() => null);
+      fetched?.forEach((member) => members.set(member.id, member));
+    }
+    let membersChanged = 0;
+    let rolesAdded = 0;
+    let rolesRemoved = 0;
+    let membersSkipped = 0;
+    for (const record of records) {
+      const member = members.get(record.userId);
+      if (!member) { membersSkipped++; continue; }
+      const desired = new Set(desiredRewardRoleIds(record.level, settings));
+      const canManage = (id: string) => {
+        const role = access.guild.roles.cache.get(id);
+        return Boolean(role && !role.managed && botMember && role.position < botMember.roles.highest.position);
+      };
+      const add = [...desired].filter((id) => canManage(id) && !member.roles.cache.has(id));
+      const remove = [...roles].filter((id) => canManage(id) && !desired.has(id) && member.roles.cache.has(id));
+      if (!add.length && !remove.length) continue;
+      if (add.length) await member.roles.add(add, 'Synchronize configured leveling rewards').then(() => { rolesAdded += add.length; }).catch((error) => log.warn('Could not add a synchronized level reward', error));
+      if (remove.length) await member.roles.remove(remove, 'Synchronize configured leveling rewards').then(() => { rolesRemoved += remove.length; }).catch((error) => log.warn('Could not remove a synchronized level reward', error));
+      membersChanged++;
+    }
+    void confirm;
+    return { membersChanged, rolesAdded, rolesRemoved, membersSkipped };
   });
 
   app.post('/api/guilds/:guildId/automod/:kind', async (request, reply) => {

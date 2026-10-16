@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.10',
+    date: '2026-10-16',
+    title: 'A more personal leveling system ⭐',
+    highlights: [
+      'Choose a relaxed, classic or challenging XP pace without resetting existing levels or progress',
+      'Track all human messages separately from XP-earning messages, with daily activity and top-chatter insights',
+      'Customize rank cards, tune channel and role XP boosts, and use manually managed seasonal leaderboards',
+    ],
+  },
+  {
     version: '0.1.0-beta.9',
     date: '2026-10-16',
     title: 'A clearer ticket desk 🎫',

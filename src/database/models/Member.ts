@@ -7,6 +7,10 @@ export interface MemberRecord {
   xp: number;
   level: number;
   messages: number;
+  xpMessages: number;
+  levelProgress: number;
+  curvePreset: 'relaxed' | 'classic' | 'challenging';
+  messageTrackingStartedAt: Date;
   lastXpAt: Date | null;
 }
 
@@ -17,6 +21,10 @@ const memberSchema = new Schema<MemberRecord>(
     xp: { type: Number, default: 0 },
     level: { type: Number, default: 0 },
     messages: { type: Number, default: 0 },
+    xpMessages: { type: Number, default: 0 },
+    levelProgress: { type: Number, default: 0, min: 0, max: 1 },
+    curvePreset: { type: String, enum: ['relaxed', 'classic', 'challenging'], default: 'classic' },
+    messageTrackingStartedAt: { type: Date, default: Date.now },
     lastXpAt: { type: Date, default: null },
   },
   { timestamps: true },
@@ -24,5 +32,7 @@ const memberSchema = new Schema<MemberRecord>(
 
 memberSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 memberSchema.index({ guildId: 1, xp: -1 });
+memberSchema.index({ guildId: 1, messages: -1 });
+memberSchema.index({ guildId: 1, level: -1, levelProgress: -1, xp: -1 });
 
 export const MemberModel = model<MemberRecord>('Member', memberSchema);

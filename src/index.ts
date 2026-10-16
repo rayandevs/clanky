@@ -4,6 +4,7 @@ import { Clanky } from './client/Clanky.js';
 import { startDashboard } from './dashboard/server.js';
 import { logger, setLogLevel } from './core/logger.js';
 import { connectDatabase, disconnectDatabase } from './database/connection.js';
+import { levels } from './services/index.js';
 import { startTranscriptAttachmentCleanup } from './modules/tickets/attachmentArchive.js';
 import { registerEvents } from './events/index.js';
 import { modules } from './modules/index.js';
@@ -33,6 +34,8 @@ process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection',
 process.on('uncaughtException', (error) => logger.error('Uncaught exception', error));
 
 await connectDatabase();
+const migratedLevelMembers = await levels.migrateMemberProgress();
+if (migratedLevelMembers) logger.info(`Migrated ${migratedLevelMembers} leveling records for updated message and progression tracking`);
 stopTranscriptAttachmentCleanup = startTranscriptAttachmentCleanup();
 await client.login(env.DISCORD_TOKEN);
 dashboard = await startDashboard(client).catch((error) => {
