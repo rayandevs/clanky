@@ -4,6 +4,12 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-alpha.5 · Scrapyard · 2026-10-16
+
+- Added public Privacy Policy and Terms of Service pages with a shared, dashboard-matched legal layout
+- Added footer-only links to both pages and direct routes at `/privacy` and `/terms`
+- Documented current self-hosted deployment, data handling, retention, deletion scope, and service terms
+
 ## 0.1.0-alpha.4 · Scrapyard · 2026-10-16
 
 - Leveling workspace with progression previews, channel and role boosts, rank-card styling, and a member reward preview

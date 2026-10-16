@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-alpha.5",
+    "date": "2026-10-16",
+    "title": "Clearer legal docs",
+    "highlights": [
+      "Read Clanky's Privacy Policy and Terms of Service on public dashboard pages",
+      "Find both documents from footer links, with a shared layout matching the dashboard",
+      "Policies explain self-hosted operation, data handling, retention, and deletion scope"
+    ]
+  },
+  {
     "version": "0.1.0-alpha.4",
     "date": "2026-10-16",
     "title": "A more personal leveling system",

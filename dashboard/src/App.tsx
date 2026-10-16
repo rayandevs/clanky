@@ -16,6 +16,8 @@ const Guild = lazy(() => import('./pages/Guild'));
 const Me = lazy(() => import('./pages/Me'));
 const Salvage = lazy(() => import('./pages/Salvage'));
 const Changelog = lazy(() => import('./pages/Changelog'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function Routes() {
@@ -40,6 +42,8 @@ function Routes() {
             <Route path="/me" component={Me} />
             <Route path="/me/salvage" component={Salvage} />
             <Route path="/changelog" component={Changelog} />
+            <Route path="/privacy" component={Privacy} />
+            <Route path="/terms" component={Terms} />
             <Route component={NotFound} />
           </Switch>
         </Suspense>

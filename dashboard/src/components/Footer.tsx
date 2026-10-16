@@ -18,6 +18,8 @@ export function Footer() {
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-muted sm:ml-auto">
           <Link href="/changelog" className="hover:text-text">Changelog</Link>
           <Link href="/dashboard" className="hover:text-text">Dashboard</Link>
+          <Link href="/privacy" className="hover:text-text">Privacy Policy</Link>
+          <Link href="/terms" className="hover:text-text">Terms of Service</Link>
           <a href="https://github.com/rayandevs/clanky" target="_blank" rel="noopener noreferrer" className="hover:text-text">GitHub</a>
         </div>
         <div className="flex flex-col gap-1 font-mono text-[11px] text-faint sm:items-end" data-testid="text-versions">

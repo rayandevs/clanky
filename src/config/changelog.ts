@@ -11,6 +11,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.11',
+    date: '2026-10-16',
+    title: 'Clearer dashboard legal docs 📜',
+    highlights: [
+      'Read Clanky’s Privacy Policy and Terms of Service on public dashboard pages',
+      'Both policies explain self-hosted operation, data handling, retention, and deletion scope',
+    ],
+  },
+  {
     version: '0.1.0-beta.10',
     date: '2026-10-16',
     title: 'A more personal leveling system ⭐',
