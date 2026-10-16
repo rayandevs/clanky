@@ -1,9 +1,8 @@
 import { ChannelType, LabelBuilder, ModalBuilder, StringSelectMenuBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
-import { channelMention, roleMentions, row, status, v2, button } from '../../../ui/components.js';
+import { channelMention, roleMentions, row, status, button } from '../../../ui/components.js';
 import { emoji } from '../../../ui/emoji.js';
 import { reply } from '../../../ui/respond.js';
-import { ticketPanel } from '../../tickets/render.js';
-import { publishTicketPanel } from '../../tickets/panels.js';
+import { publishTicketPanel, ticketPanelPayload } from '../../tickets/panels.js';
 import {
   actionButton,
   channelPicker,
@@ -307,7 +306,7 @@ export const ticketsPage: SettingsPage = {
       }
       case 'preview':
         if (panel) {
-          await interaction.reply(v2(ticketPanel(ctx.guild.settings, panel), { ephemeral: true }));
+          await interaction.reply(await ticketPanelPayload(ctx.guild.settings, panel, true));
           return 'done';
         }
         return manage();

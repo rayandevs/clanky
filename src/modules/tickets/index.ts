@@ -157,7 +157,7 @@ const ticketComponents = guildComponents({
         { returnDocument: 'after' },
       ).lean<TicketRecord>();
       if (!updated) return reply(interaction, 'info', 'Someone already claimed this ticket.');
-      await interaction.update({ components: [interaction.message.components[0]!, ticketHeader(updated, settings)] });
+      await interaction.update({ components: [...interaction.message.components.slice(0, -1), ticketHeader(updated, settings)] });
       return interaction.followUp(v2(notice('success', `${interaction.user} will help you with this ticket.`)));
     }
 

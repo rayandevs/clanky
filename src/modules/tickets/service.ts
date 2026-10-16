@@ -11,12 +11,13 @@ import {
 import { createLogger } from '../../core/logger.js';
 import { timestamp } from '../../core/time.js';
 import { TicketModel, type TicketRecord } from '../../database/models/index.js';
+import { renderTicketOpeningCard } from '../../render/ticketCards.js';
 import { guilds } from '../../services/index.js';
 import type { GuildSettings, TicketPanelSetting } from '../../settings/schema.js';
 import { divider, panel, text, v2 } from '../../ui/components.js';
 import { emoji } from '../../ui/emoji.js';
 import { colors } from '../../ui/theme.js';
-import { ticketHeader } from './render.js';
+import { ticketArtwork, ticketHeader } from './render.js';
 
 const log = createLogger('tickets');
 
@@ -93,8 +94,19 @@ export async function createTicket(
   })).toObject();
 
   const staffPings = routing.staffRoleIds.map((id) => `<@&${id}>`).join(' ');
+  const openingFileName = 'ticket-opening.png';
+  const openingCard = await renderTicketOpeningCard({
+    accent: settings.general.accentColor,
+    displayName: member.displayName,
+    avatarUrl: member.displayAvatarURL({ extension: 'png', size: 256 }),
+  });
   await channel.send({
-    ...v2([text(`${member} ${staffPings}`.trim()), ticketHeader(ticket, settings)]),
+    ...v2([
+      text(`${member} ${staffPings}`.trim()),
+      ticketArtwork(`attachment://${openingFileName}`, `Private support welcome card for ${member.displayName}.`, settings.general.accentColor),
+      ticketHeader(ticket, settings),
+    ]),
+    files: [new AttachmentBuilder(openingCard, { name: openingFileName })],
     allowedMentions: { users: [member.id], roles: routing.staffRoleIds },
   });
   return { ticket, channel };

@@ -2,12 +2,20 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
-## Unreleased
+## [0.1.0-beta.8] — 2026-10-16
 
 ### Added
 - Ticket administrators can configure up to three panels, custom intake questions, per-panel staff/channel/transcript routing, and preview/post panels from both `/settings` and the dashboard
+- Ticket panel banners and ticket-opening summaries use Clanky's shared canvas-card style and the server accent color; staff can refresh panel artwork in place
 - Panel messages are tracked and refreshed in place; tickets preserve question labels, answers, and routing snapshots in transcripts
 - Existing single-panel title/description settings migrate to the first configurable panel
+
+### Changed
+- Rebuilt the dashboard ticket editor around panel navigation, a dedicated form/routing editor, reorderable questions, a live Discord preview, and save-aware panel publishing
+
+### Fixed
+- Bot-side panel previews now show the same canvas artwork as published panels
+- Claiming a ticket preserves its opening artwork while refreshing the claim controls
 
 ## [0.1.0-beta.7] — 2026-10-15
 

@@ -1,11 +1,21 @@
-import { DiscordAPIError, type TextChannel } from 'discord.js';
+import { AttachmentBuilder, DiscordAPIError, type TextChannel } from 'discord.js';
 import { TicketPanelMessageModel, type TicketPanelMessageRecord } from '../../database/models/index.js';
+import { renderTicketPanelCard } from '../../render/ticketCards.js';
 import type { GuildSettings, TicketPanelSetting } from '../../settings/schema.js';
 import { v2 } from '../../ui/components.js';
 import { ticketPanel } from './render.js';
 
 export async function listTicketPanelMessages(guildId: string): Promise<TicketPanelMessageRecord[]> {
   return TicketPanelMessageModel.find({ guildId }).sort({ updatedAt: -1 }).lean<TicketPanelMessageRecord[]>();
+}
+
+export async function ticketPanelPayload(settings: GuildSettings, panelSettings: TicketPanelSetting, ephemeral = false) {
+  const fileName = 'ticket-panel.png';
+  const artwork = await renderTicketPanelCard(settings.general.accentColor);
+  return {
+    ...v2(ticketPanel(settings, panelSettings, `attachment://${fileName}`), { ephemeral }),
+    files: [new AttachmentBuilder(artwork, { name: fileName })],
+  };
 }
 
 /** Updates the known message in place; if no live message exists, posts and tracks one. */
@@ -27,7 +37,7 @@ export async function publishTicketPanel(
       if (mode === 'update') return 'missing';
     }
     if (message) {
-      await message.edit(v2(ticketPanel(settings, panelSettings)));
+      await message.edit({ ...await ticketPanelPayload(settings, panelSettings), attachments: [] });
       await TicketPanelMessageModel.updateOne(filter, { $set: { messageId: message.id } });
       return 'updated';
     }
@@ -35,7 +45,7 @@ export async function publishTicketPanel(
     return 'missing';
   }
 
-  const message = await channel.send(v2(ticketPanel(settings, panelSettings)));
+  const message = await channel.send(await ticketPanelPayload(settings, panelSettings));
   await TicketPanelMessageModel.findOneAndUpdate(filter, { $set: { messageId: message.id } }, { upsert: true, returnDocument: 'after' });
   return 'posted';
 }

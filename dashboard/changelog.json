@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-alpha.2",
+    "date": "2026-10-16",
+    "title": "A better ticket desk",
+    "highlights": [
+      "A panel-first ticket editor for up to three support entry points",
+      "Custom questions, topic options, and per-panel routing in one focused workspace",
+      "Live Discord preview and save-aware publish/update controls"
+    ]
+  },
+  {
     "version": "0.1.0-alpha.1",
     "date": "2026-10-15",
     "title": "First light 🔦",

@@ -1,4 +1,4 @@
-import { ButtonStyle, type ContainerBuilder } from 'discord.js';
+import { ButtonStyle, ContainerBuilder } from 'discord.js';
 import { cid } from '../../core/customId.js';
 import { timestamp } from '../../core/time.js';
 import type { TicketRecord } from '../../database/models/index.js';
@@ -7,10 +7,18 @@ import { button, divider, panel, row, text } from '../../ui/components.js';
 import { emoji } from '../../ui/emoji.js';
 import { colors } from '../../ui/theme.js';
 
-export function ticketPanel(settings: GuildSettings, panelSettings: TicketPanelSetting = settings.tickets.panels[0]!): ContainerBuilder {
-  return panel({ title: panelSettings.title, emoji: 'ticket', description: panelSettings.description, accent: settings.general.accentColor }).addActionRowComponents(
+export function ticketPanel(settings: GuildSettings, panelSettings: TicketPanelSetting, imageUrl: string): ContainerBuilder {
+  return panel({ title: panelSettings.title, emoji: 'ticket', description: panelSettings.description, accent: settings.general.accentColor })
+    .addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(imageUrl).setDescription(`Support panel artwork for ${panelSettings.title}`)))
+    .addActionRowComponents(
     row(button({ id: cid('tk', 'open', panelSettings.id), label: 'Open a ticket', emoji: 'ticket', style: ButtonStyle.Primary })),
   );
+}
+
+export function ticketArtwork(imageUrl: string, description: string, accent: number): ContainerBuilder {
+  return new ContainerBuilder()
+    .setAccentColor(accent)
+    .addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(imageUrl).setDescription(description)));
 }
 
 export function ticketHeader(ticket: TicketRecord, settings: GuildSettings): ContainerBuilder {

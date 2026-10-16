@@ -11,6 +11,7 @@ const avatar = (n: number) => `https://cdn.discordapp.com/embed/avatars/${n % 6}
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 
 let loggedIn = true;
+const postedTicketPanels = new Map<string, NonNullable<SettingsPayload['postedTicketPanels']>>();
 
 const MODULES: Meta['modules'] = [
   { id: 'general', name: 'General', emoji: 'settings', description: 'Look and feel, update notes and modules.', toggleable: false, hasSettingsPage: true },
@@ -28,8 +29,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.7', label: 'v0.1.0 Beta 7', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-alpha.1', label: 'v0.1.0 Alpha 1', codename: 'Scrapyard' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.8', label: 'v0.1.0 Beta 8', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-alpha.2', label: 'v0.1.0 Alpha 2', codename: 'Scrapyard' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -176,12 +177,14 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.8', date: '2026-10-16', title: 'A better ticket desk 🎫', highlights: ['Configure up to three ticket panels with custom intake forms and routing', 'A redesigned dashboard editor with previews and tracked panel updates', 'Canvas artwork on support panels and newly opened tickets'] },
     { version: '0.1.0-beta.7', date: '2026-10-15', title: 'The dashboard is here 🖥️', highlights: ['Change every setting from the web dashboard', 'See your Salvage profile, bag and collection online', 'Server overview with stats and change history'] },
     { version: '0.1.0-beta.6', date: '2026-10-15', title: 'Image screens 🖼️', highlights: ['Bag, shop and collection are now image cards', 'Your bag, credits, zone and boosts show on every game card', 'Shop buttons are numbered to match each row'] },
     { version: '0.1.0-beta.5', date: '2026-10-15', title: 'The big shop update 🛒', highlights: ['Black Market with 3 new deals every day', 'Upgrades, boosts and crates', 'Profile themes, titles and badges'] },
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-alpha.2', date: '2026-10-16', title: 'A better ticket desk', highlights: ['A panel-first ticket editor for up to three support entry points', 'Custom questions, topic options, and per-panel routing in one focused workspace', 'Live Discord preview and save-aware publish/update controls'] },
     { version: '0.1.0-alpha.1', date: '2026-10-15', title: 'First light 🔦', highlights: ['Log in with Discord', 'Every server setting in one place', 'Server overview with stats and history', 'Your Salvage profile, bag and collection', 'Personal preferences'] },
   ],
 };
@@ -210,7 +213,7 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
     if (!c) return ok(overview(b));
     const s = settingsOf(b);
     const rules = (): Record<RuleKind, boolean> => ({ invites: !!s.automod.rules.invites, mentionSpam: !!s.automod.rules.mentionSpam, spam: !!s.automod.rules.spam, keywords: !!s.automod.rules.keywords });
-    if (c === 'settings' && method === 'GET') return ok({ settings: s, resources: { channels, roles }, postedTicketPanels: [], automod: { canManage: true, rules: rules() } } satisfies SettingsPayload);
+    if (c === 'settings' && method === 'GET') return ok({ settings: s, resources: { channels, roles }, postedTicketPanels: postedTicketPanels.get(b) ?? [], automod: { canManage: true, rules: rules() } } satisfies SettingsPayload);
     if (c === 'settings' && method === 'PATCH' && d) {
       const section = d as SectionId;
       if (section === 'leveling') {
@@ -227,7 +230,18 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
       s.automod.rules[kind] = enabled ? `r-${kind}` : null;
       return ok({ settings: s, rules: rules() });
     }
-    if (c === 'tickets') return ok({ ok: true, result: (body as { mode?: string } | undefined)?.mode === 'update' ? 'updated' : 'posted' });
+    if (c === 'tickets' && d === 'panel' && method === 'POST') {
+      const request = body as { channelId?: string; panelId?: string; mode?: 'publish' | 'update' };
+      if (!request.channelId || !request.panelId) throw new ApiError(400, 'Choose a panel and destination channel.', 'invalid');
+      const placements = postedTicketPanels.get(b) ?? [];
+      const existing = placements.find((item) => item.panelId === request.panelId && item.channelId === request.channelId);
+      if (request.mode === 'update' && !existing) throw new ApiError(404, 'No tracked panel exists in that channel.', 'not_found');
+      const now = new Date().toISOString();
+      if (existing) existing.updatedAt = now;
+      else placements.push({ panelId: request.panelId, channelId: request.channelId, messageId: id(Date.now() % 10_000_000_000_000_000), updatedAt: now });
+      postedTicketPanels.set(b, placements);
+      return ok({ result: existing ? 'updated' : 'posted' });
+    }
   }
   throw new ApiError(404, 'Not found', 'not_found');
 }

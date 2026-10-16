@@ -1,17 +1,18 @@
 import { useMutation } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
-import { Plus, Send, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Container, DButton, DiscordWindow, DSelect, Message, Row, Text, Title } from '@/components/discord';
+import { Container, DButton, DiscordWindow, Message, Row, Text, Title } from '@/components/discord';
 import { BrandSpinner, ModuleSwitch, Panel, SaveBar, settingsKey, useDraft, useGuildSettings } from '@/components/dash';
 import { ChannelPicker, MultiChannelPicker, RolePicker, SingleRolePicker } from '@/components/pickers';
 import { useToast } from '@/components/Toast';
 import { Button, Emoji, Field, Input, Segmented, Slider, Switch } from '@/components/ui';
 import { api, ApiError, queryClient } from '@/lib/api';
 import { useMeta } from '@/lib/hooks';
-import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKind, type SectionId, type SettingsPayload, type TicketPanel, type TicketQuestion } from '@/lib/types';
+import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKind, type SectionId, type SettingsPayload } from '@/lib/types';
 import { cn, hex, MODULE_EMOJI } from '@/lib/utils';
 import { MessagePreview, OffNotice, SectionHeader, TemplateInput, WordList } from './shared';
+import TicketsSettings from './TicketsSettings';
 
 type Props = { guildId: string; data: SettingsPayload };
 
@@ -303,192 +304,6 @@ function Welcome({ guildId, data }: Props) {
 
 /* ───────────────────────── Tickets ───────────────────────── */
 
-function PostPanel({ guildId, data, panel, unsaved }: Props & { panel: TicketPanel; unsaved: boolean }) {
-  const [channelId, setChannelId] = useState<string | null>(null);
-  const toast = useToast();
-  const existing = data.postedTicketPanels?.some((item) => item.panelId === panel.id && item.channelId === channelId);
-  const post = useMutation({
-    mutationFn: () => api<{ result: 'posted' | 'updated' }>('POST', `/api/guilds/${guildId}/tickets/panel`, { channelId, panelId: panel.id, mode: existing ? 'update' : 'publish' }),
-    onSuccess: ({ result }) => {
-      toast(result === 'updated' ? 'Ticket panel updated in place.' : 'Ticket panel posted.');
-      void queryClient.invalidateQueries({ queryKey: settingsKey(guildId) });
-    },
-    onError: (e) => {
-      toast(e instanceof ApiError ? e.message : 'Could not post the panel.', 'bad');
-      void queryClient.invalidateQueries({ queryKey: settingsKey(guildId) });
-    },
-  });
-  return (
-    <Panel title="Publish this panel" description="Save the form first. A tracked panel in the selected channel will be updated in place; otherwise a new panel is posted.">
-      <div className="flex flex-col gap-2.5 py-4 sm:flex-row">
-        <div className="flex-1">
-          <ChannelPicker value={channelId} onChange={setChannelId} channels={data.resources.channels} placeholder="Pick where to post it" testId="picker-panel-channel" />
-        </div>
-        <Button variant="primary" disabled={!channelId || unsaved} loading={post.isPending} onClick={() => post.mutate()} data-testid="button-post-panel">
-          <Send className="size-4" /> {existing ? 'Update panel' : 'Post panel'}
-        </Button>
-      </div>
-    </Panel>
-  );
-}
-
-function Tickets({ guildId, data }: Props) {
-  const d = useDraft(guildId, 'tickets', data.settings.tickets);
-  const accent = useAccent(data);
-  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
-  if (!d.draft) return null;
-  const v = d.draft;
-  const panel = v.panels.find((item) => item.id === selectedPanelId) ?? v.panels[0]!;
-  const maxQuestions = 5 - (v.categories.length ? 1 : 0);
-  const updatePanel = (panelId: string, patch: Partial<TicketPanel>) => d.set('panels', v.panels.map((item) => item.id === panelId ? { ...item, ...patch } : item));
-  const updateQuestion = (panelId: string, questionId: string, patch: Partial<TicketQuestion>) =>
-    d.set('panels', v.panels.map((item) => item.id === panelId ? { ...item, questions: item.questions.map((q) => q.id === questionId ? { ...q, ...patch } : q) } : item));
-  const addQuestion = () => updatePanel(panel.id, { questions: [...panel.questions, {
-    id: `q-${crypto.randomUUID().replaceAll('-', '').slice(0, 14)}`,
-    label: `Question ${panel.questions.length + 1}`,
-    description: '', placeholder: '', style: 'paragraph', required: true, minLength: 0, maxLength: 1000,
-  }] });
-  const addPanel = () => {
-    if (v.panels.length >= 3) return;
-    const id = `p-${crypto.randomUUID().replaceAll('-', '').slice(0, 14)}`;
-    const next: TicketPanel = {
-      id, title: `Panel ${v.panels.length + 1}`, description: 'Choose this panel to open a support ticket.',
-      questions: [{ id: `q-${crypto.randomUUID().replaceAll('-', '').slice(0, 14)}`, label: 'How can we help?', description: '', placeholder: '', style: 'paragraph', required: true, minLength: 0, maxLength: 1000 }],
-      parentId: null, logChannelId: null, staffRoleIds: null,
-    };
-    d.set('panels', [...v.panels, next]);
-    setSelectedPanelId(id);
-  };
-  const setCat = (i: number, patch: Partial<GuildSettings['tickets']['categories'][number]>) =>
-    d.set('categories', v.categories.map((c, j) => (j === i ? { ...c, ...patch } : c)));
-  return (
-    <>
-      <SectionHeader emoji="🎫" title="Tickets" description="Private support channels with your team." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
-      <OffNotice show={!v.enabled}>
-        <Panel title="Setup">
-          <Field label="Ticket category" description="New ticket channels are created inside this category.">
-            <ChannelPicker value={v.parentId} onChange={(x) => d.set('parentId', x)} channels={data.resources.channels} kind="category" placeholder="Pick a category" testId="picker-ticket-category" />
-          </Field>
-          <Field label="Transcript log" description="Closed tickets are saved here.">
-            <ChannelPicker value={v.logChannelId} onChange={(x) => d.set('logChannelId', x)} channels={data.resources.channels} testId="picker-ticket-log" />
-          </Field>
-          <Field label="Staff roles" description="These roles can see and answer tickets.">
-            <RolePicker value={v.staffRoleIds} onChange={(x) => d.set('staffRoleIds', x)} roles={data.resources.roles} max={10} testId="picker-staff" />
-          </Field>
-          <Field label="Open tickets per member">
-            <Slider value={v.maxOpenPerUser} onChange={(x) => d.set('maxOpenPerUser', x)} min={1} max={5} />
-          </Field>
-        </Panel>
-        <Panel title="Ticket panels" description="Each panel has its own title, intake form, and optional routing. IDs stay stable when you rename a panel." action={<Button size="sm" disabled={v.panels.length >= 3} onClick={addPanel} data-testid="button-add-ticket-panel"><Plus className="size-3.5" /> Add panel</Button>}>
-          <Field label="Panel to edit" description="You can configure up to three separate entry points.">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <select value={panel.id} onChange={(e) => setSelectedPanelId(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-line bg-black/25 px-3.5 text-[14px] text-text" data-testid="select-ticket-panel">
-                {v.panels.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-              </select>
-              <Button variant="danger" disabled={v.panels.length <= 1} onClick={() => {
-                const next = v.panels.filter((item) => item.id !== panel.id);
-                d.set('panels', next);
-                setSelectedPanelId(next[0]?.id ?? null);
-              }} data-testid="button-remove-ticket-panel"><Trash2 className="size-4" /> Remove panel</Button>
-            </div>
-          </Field>
-          <Field label="Panel title"><Input value={panel.title} maxLength={100} onChange={(e) => updatePanel(panel.id, { title: e.target.value })} data-testid="input-panel-title" /></Field>
-          <Field label="Panel text"><TemplateInput value={panel.description} onChange={(x) => updatePanel(panel.id, { description: x })} placeholders={[]} maxLength={1000} /></Field>
-          <Field label="Ticket category override" description={`Leave blank to use the server default${v.parentId ? ` (${data.resources.channels.find((c) => c.id === v.parentId)?.name ?? 'selected category'})` : ''}.`}>
-            <ChannelPicker value={panel.parentId} onChange={(x) => updatePanel(panel.id, { parentId: x })} channels={data.resources.channels} kind="category" placeholder="Use server default" testId="picker-panel-category" />
-          </Field>
-          <Field label="Transcript log override" description={`Leave blank to use the server default${v.logChannelId ? ` (#${data.resources.channels.find((c) => c.id === v.logChannelId)?.name ?? 'selected channel'})` : ''}.`}>
-            <ChannelPicker value={panel.logChannelId} onChange={(x) => updatePanel(panel.id, { logChannelId: x })} channels={data.resources.channels} placeholder="Use server default" testId="picker-panel-log" />
-          </Field>
-          <Field label="Staff-role override" description={panel.staffRoleIds === null ? 'Inheriting the server-wide staff roles.' : 'This panel uses its own staff roles.'}>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Button size="sm" variant={panel.staffRoleIds === null ? 'primary' : 'outline'} onClick={() => updatePanel(panel.id, { staffRoleIds: null })}>Use server defaults</Button>
-                <Button size="sm" variant={panel.staffRoleIds !== null ? 'primary' : 'outline'} onClick={() => updatePanel(panel.id, { staffRoleIds: [...v.staffRoleIds] })}>Customize</Button>
-              </div>
-              {panel.staffRoleIds !== null && <RolePicker value={panel.staffRoleIds} onChange={(x) => updatePanel(panel.id, { staffRoleIds: x })} roles={data.resources.roles} max={10} testId="picker-panel-staff" />}
-            </div>
-          </Field>
-        </Panel>
-        <Panel title="Intake form" description={`Discord allows at most five modal fields. ${v.categories.length ? 'The topic selector uses one field' : 'No topic selector is configured'}, so this panel can have up to ${maxQuestions} question${maxQuestions === 1 ? '' : 's'}.`} action={<Button size="sm" disabled={panel.questions.length >= maxQuestions} onClick={addQuestion} data-testid="button-add-ticket-question"><Plus className="size-3.5" /> Add question</Button>}>
-          {panel.questions.map((q, i) => (
-            <div key={q.id} className="py-3">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-[14px] font-semibold">Question {i + 1}</p>
-                <Button variant="ghost" size="icon" disabled={panel.questions.length <= 1 && !v.categories.length} aria-label="Remove question" onClick={() => updatePanel(panel.id, { questions: panel.questions.filter((item) => item.id !== q.id) })}>
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Question"><Input value={q.label} maxLength={45} onChange={(e) => updateQuestion(panel.id, q.id, { label: e.target.value })} /></Field>
-                <Field label="Helper text"><Input value={q.description} maxLength={100} onChange={(e) => updateQuestion(panel.id, q.id, { description: e.target.value })} placeholder="Optional guidance" /></Field>
-                <Field label="Placeholder"><Input value={q.placeholder} maxLength={100} onChange={(e) => updateQuestion(panel.id, q.id, { placeholder: e.target.value })} placeholder="Example answer" /></Field>
-                <Field label="Answer style">
-                  <Segmented value={q.style} options={[{ value: 'short', label: 'Short' }, { value: 'paragraph', label: 'Paragraph' }]} onChange={(style) => updateQuestion(panel.id, q.id, { style })} />
-                </Field>
-                <Field label="Maximum answer length"><Input type="number" min={1} max={1000} value={q.maxLength} onChange={(e) => updateQuestion(panel.id, q.id, { maxLength: Math.max(1, Math.min(1000, Number(e.target.value) || 1)), minLength: Math.min(q.minLength, Math.max(1, Number(e.target.value) || 1)) })} /></Field>
-                <Field label="Answer required" inline><Switch checked={q.required} onChange={(required) => updateQuestion(panel.id, q.id, { required, minLength: required ? q.minLength : 0 })} label="Answer required" /></Field>
-              </div>
-            </div>
-          ))}
-          {panel.questions.length === 0 && <p className="py-4 text-[14px] text-faint">This panel uses the topic selector only. Add a question for more detail.</p>}
-        </Panel>
-        <Panel
-          title="Topics"
-          description="Optional shared classification. Members pick one when they open a ticket; it uses one field in every panel's modal."
-          action={
-            <Button size="sm" disabled={v.categories.length >= 10 || (!v.categories.length && v.panels.some((item) => item.questions.length >= 5))} onClick={() => d.set('categories', [...v.categories, { id: `topic-${crypto.randomUUID().replaceAll('-', '').slice(0, 14)}`, label: '', description: '' }])} data-testid="button-add-topic">
-              <Plus className="size-3.5" /> Add topic
-            </Button>
-          }
-        >
-          {v.categories.length === 0 && <p className="py-5 text-[14px] text-faint">No topics. Members open a general ticket.</p>}
-          <AnimatePresence initial={false}>
-            {v.categories.map((c, i) => (
-              <motion.div key={i} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <div className="flex flex-col gap-2 py-3 sm:flex-row">
-                  <Input value={c.label} maxLength={50} placeholder="Name, like Billing" onChange={(e) => setCat(i, { label: e.target.value })} className="sm:w-56" data-testid={`input-topic-label-${i}`} />
-                  <Input value={c.description} maxLength={100} placeholder="Short description" onChange={(e) => setCat(i, { description: e.target.value })} />
-                  <Button variant="ghost" size="icon" aria-label="Remove topic" onClick={() => {
-                    const categories = v.categories.filter((_, j) => j !== i);
-                    d.set('categories', categories);
-                    if (!categories.length) d.set('panels', v.panels.map((p) => p.questions.length ? p : { ...p, questions: [{ id: `q-${crypto.randomUUID().replaceAll('-', '').slice(0, 14)}`, label: 'How can we help?', description: '', placeholder: '', style: 'paragraph', required: true, minLength: 0, maxLength: 1000 }] }));
-                  }}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </Panel>
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
-          <Panel title="Panel and form preview" description="Preview updates as you edit. Save changes before posting the panel.">
-            <DiscordWindow channel="help-desk">
-              <Message>
-                <Container accent={accent}>
-                  <Title>{`🎫 ${panel.title || ' '}`}</Title>
-                  <Text>{panel.description || ' '}</Text>
-                  {v.categories.length > 0 && <DSelect placeholder="Pick a topic" />}
-                  <Row><DButton style="success" emoji="📥">Open a ticket</DButton></Row>
-                </Container>
-              </Message>
-              <Message time="Form preview">
-                <Container accent={accent}>
-                  <Title>{`📝 ${panel.title} form`}</Title>
-                  {v.categories.length > 0 && <Text>{`Topic: ${v.categories[0]?.label || 'Choose a topic'}`}</Text>}
-                  {panel.questions.map((q) => <Text key={q.id}>{`${q.label}${q.required ? ' *' : ' (optional)'} · ${q.style === 'short' ? 'Short answer' : 'Paragraph'} · max ${q.maxLength} chars${q.description ? `\n${q.description}` : ''}${q.placeholder ? `\nPlaceholder: ${q.placeholder}` : ''}`}</Text>)}
-                </Container>
-              </Message>
-            </DiscordWindow>
-          </Panel>
-          <PostPanel guildId={guildId} data={data} panel={panel} unsaved={d.dirty} />
-        </div>
-      </OffNotice>
-      <SaveBar dirty={d.dirty} saving={d.saving} onSave={() => d.save()} onReset={d.reset} />
-    </>
-  );
-}
-
 /* ───────────────────────── Suggestions ───────────────────────── */
 
 function Suggestions({ guildId, data }: Props) {
@@ -632,7 +447,7 @@ const FORMS: Partial<Record<SectionId, (p: Props) => React.ReactNode>> = {
   automod: Automod,
   logging: Logging,
   welcome: Welcome,
-  tickets: Tickets,
+  tickets: TicketsSettings,
   suggestions: Suggestions,
   leveling: Leveling,
   games: Games,
