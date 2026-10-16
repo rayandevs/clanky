@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
 import { motion } from 'motion/react';
-import { ChevronsUpDown, History, LayoutGrid } from 'lucide-react';
+import { ChevronsUpDown, FileText, History, LayoutGrid } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
 import { BrandSpinner, EmptyState, ModuleSwitch, Panel, RequireLogin, useGuildSettings } from '@/components/dash';
@@ -14,6 +14,7 @@ import { ago, cn, MODULE_EMOJI, n } from '@/lib/utils';
 
 const SettingsPage = lazy(() => import('./settings/SettingsPage'));
 const HistoryPage = lazy(() => import('./settings/History'));
+const TicketTranscriptsPage = lazy(() => import('./TicketTranscripts'));
 
 export const SECTIONS: Array<{ id: SectionId; name: string; emoji: string }> = [
   { id: 'general', name: 'General', emoji: '⚙️' },
@@ -97,6 +98,7 @@ function Sidebar({ guild, active }: { guild: Overview['guild']; active: string }
         })}
         <p className="stamp hidden px-3 pb-1 pt-4 !text-[10px] text-faint lg:block">Server</p>
         {item(`/dashboard/${guild.id}/history`, active === 'history', <><History className="size-[18px] text-faint" /> Change history</>, 'nav-history')}
+        {item(`/dashboard/${guild.id}/transcripts`, active === 'transcripts', <><FileText className="size-[18px] text-faint" /> Ticket transcripts</>, 'nav-ticket-transcripts')}
       </nav>
     </Glass>
   );
@@ -272,6 +274,7 @@ function Leaders({ title, emoji, rows, empty }: { title: string; emoji: string; 
 
 function GuildArea() {
   const { guildId, section = '' } = useParams<{ guildId: string; section?: string }>();
+  const activeSection = section.split('?')[0] ?? '';
   const overview = useQuery<Overview>({ queryKey: ['/api/guilds', guildId] });
 
   if (overview.isLoading) {
@@ -302,20 +305,20 @@ function GuildArea() {
     );
   }
 
-  const valid = section === '' || section === 'history' || SECTIONS.some((s) => s.id === section);
+  const valid = activeSection === '' || activeSection === 'history' || SECTIONS.some((s) => s.id === activeSection);
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] items-start gap-6 px-5 pb-28 pt-24 sm:pt-28 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <Sidebar guild={overview.data.guild} active={section} />
-      <motion.div key={section} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="min-w-0">
+      <Sidebar guild={overview.data.guild} active={activeSection} />
+      <motion.div key={activeSection} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="min-w-0">
         <Suspense fallback={<BrandSpinner />}>
           {!valid ? (
             <Glass className="rounded-3xl"><EmptyState emoji="🗺️" title="That page doesn't exist" body="Pick a section from the menu." /></Glass>
-          ) : section === '' ? (
+          ) : activeSection === '' ? (
             <OverviewPage data={overview.data} />
-          ) : section === 'history' ? (
+          ) : activeSection === 'history' ? (
             <HistoryPage guildId={guildId} />
           ) : (
-            <SettingsPage guildId={guildId} section={section as SectionId} />
+            <SettingsPage guildId={guildId} section={activeSection as SectionId} />
           )}
         </Suspense>
       </motion.div>
@@ -325,9 +328,11 @@ function GuildArea() {
 
 export default function Guild() {
   const [location] = useLocation();
+  const { guildId = '', section = '' } = useParams<{ guildId: string; section?: string }>();
+  const activeSection = section.split('?')[0] ?? '';
   return (
     <RequireLogin next={location}>
-      <GuildArea />
+      {activeSection === 'transcripts' ? <TicketTranscriptsPage guildId={guildId} /> : <GuildArea />}
     </RequireLogin>
   );
 }

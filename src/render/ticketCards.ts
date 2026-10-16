@@ -36,7 +36,7 @@ function drawOverline(ctx: SKRSContext2D, value: string) {
   ctx.textBaseline = 'alphabetic';
   ctx.font = font('SemiBold', 17);
   ctx.fillStyle = palette.muted;
-  ctx.fillText(value.toUpperCase(), 54, 72);
+  ctx.fillText(value.toUpperCase(), 54, 72, 635);
 }
 
 function drawTicketTile(ctx: SKRSContext2D, accent: string) {
@@ -53,25 +53,40 @@ function drawTicketTile(ctx: SKRSContext2D, accent: string) {
   ctx.stroke();
 }
 
-/** Quiet, accent-matched banner artwork for a posted ticket panel. */
-export async function renderTicketPanelCard(accent: number): Promise<Buffer> {
+/** Accent-matched banner artwork with a built-in visual style choice. */
+export async function renderTicketPanelCard(accent: number, template: 'support' | 'minimal' = 'support'): Promise<Buffer> {
   const { canvas, ctx, color } = createTicketCanvas(accent);
-  drawOverline(ctx, 'Support desk');
-  ctx.textAlign = 'left';
-  ctx.font = font('Bold', 42);
-  ctx.fillStyle = palette.text;
-  ctx.fillText('A private space for help.', 54, 133);
-  ctx.font = font('Medium', 23);
-  ctx.fillStyle = palette.muted;
-  ctx.fillText('Start a conversation with the team.', 56, 177);
-  fillRoundRect(ctx, 54, 211, 196, 42, 13, `${color}24`);
-  ctx.font = font('SemiBold', 15);
-  ctx.fillStyle = color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('PRIVATE TICKETS', 152, 232);
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
+  if (template === 'minimal') {
+    drawOverline(ctx, 'Private help desk');
+    ctx.textAlign = 'left';
+    ctx.font = font('Bold', 42);
+    ctx.fillStyle = palette.text;
+    ctx.fillText('Tell us what is going on.', 54, 133, 650);
+    ctx.font = font('Medium', 23);
+    ctx.fillStyle = palette.muted;
+    ctx.fillText('A private chat with the right team.', 56, 177, 620);
+    fillRoundRect(ctx, 54, 211, 196, 42, 13, `${color}24`);
+    ctx.font = font('SemiBold', 15);
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('OPEN A TICKET', 152, 232);
+  } else {
+    drawOverline(ctx, 'Support desk');
+    ctx.textAlign = 'left';
+    ctx.font = font('Bold', 42);
+    ctx.fillStyle = palette.text;
+    ctx.fillText('A private space for help.', 54, 133, 650);
+    ctx.font = font('Medium', 23);
+    ctx.fillStyle = palette.muted;
+    ctx.fillText('Start a conversation with the team.', 56, 177, 640);
+    fillRoundRect(ctx, 54, 211, 196, 42, 13, `${color}24`);
+    ctx.font = font('SemiBold', 15);
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('PRIVATE TICKETS', 152, 232);
+  }
 
   drawTicketTile(ctx, color);
   const ticketIcon = await loadIcon('1f3ab');
@@ -79,34 +94,42 @@ export async function renderTicketPanelCard(accent: number): Promise<Buffer> {
   ctx.font = font('Medium', 14);
   ctx.fillStyle = palette.muted;
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
   ctx.fillText('Your team is ready', 846, 216);
   return canvas.toBuffer('image/png');
 }
 
 export interface TicketOpeningCardData {
   accent: number;
+  ticketId: number;
+  panelTitle: string;
   displayName: string;
   avatarUrl?: string;
+  categoryLabel?: string | null;
+  status: string;
 }
 
-/** A welcoming card that complements ticket metadata and answers shown in the adjacent text header. */
+/** One compact summary card: the adjacent container carries the intake answers and controls. */
 export async function renderTicketOpeningCard(data: TicketOpeningCardData): Promise<Buffer> {
   const { canvas, ctx, color } = createTicketCanvas(data.accent);
-  drawOverline(ctx, 'Private support');
+  drawOverline(ctx, `${data.panelTitle || 'Private support'} · ticket opened`);
   ctx.textAlign = 'left';
-  ctx.font = font('Bold', 40);
+  ctx.font = font('Bold', 42);
   ctx.fillStyle = palette.text;
-  ctx.fillText("You're in the right place.", 54, 133);
-  ctx.font = font('Medium', 24);
+  ctx.fillText(`Ticket #${data.ticketId}`, 54, 128, 630);
+  ctx.font = font('SemiBold', 22);
+  ctx.fillStyle = palette.text;
+  ctx.fillText(`Opened by ${data.displayName}`, 56, 171, 625);
+  ctx.font = font('Medium', 20);
   ctx.fillStyle = palette.muted;
-  ctx.fillText('A team member will be with you shortly.', 56, 177);
-  ctx.font = font('SemiBold', 14);
-  fillRoundRect(ctx, 54, 211, 196, 38, 12, 'rgba(255,255,255,0.055)');
-  ctx.fillStyle = color;
-  ctx.textAlign = 'center';
+  ctx.fillText(data.categoryLabel ? `Category · ${data.categoryLabel}` : 'Private support request', 56, 207, 625);
+
+  const statusColor = data.status.startsWith('Claimed') ? '#55d89a' : color;
+  fillRoundRect(ctx, 54, 224, 376, 42, 13, `${statusColor}22`);
+  ctx.font = font('SemiBold', 17);
+  ctx.fillStyle = statusColor;
   ctx.textBaseline = 'middle';
-  ctx.fillText('PRIVATE CHANNEL', 152, 230);
-  ctx.textAlign = 'left';
+  ctx.fillText(data.status, 70, 245, 344);
   ctx.textBaseline = 'alphabetic';
 
   fillRoundRect(ctx, 744, 55, 204, 190, 24, palette.surface);

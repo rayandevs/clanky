@@ -11,6 +11,27 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.9',
+    date: '2026-10-16',
+    title: 'A clearer ticket desk 🎫',
+    highlights: [
+      'Choose no panel image, a built-in template, or upload custom panel artwork from the dashboard',
+      'Ticket openings show the opener, category and claim status in one image inside one container',
+      'Search structured transcripts in the dashboard; attachment bytes are archived for the configured retention period and permission-checked',
+      'Tickets remain open if transcript data or attachments cannot be safely archived',
+    ],
+  },
+  {
+    version: '0.1.0-beta.8',
+    date: '2026-10-16',
+    title: 'A better ticket desk 🎫',
+    highlights: [
+      'Configure up to three ticket panels with custom intake forms and per-panel routing',
+      'A redesigned dashboard editor with previews and tracked panel updates',
+      'Canvas artwork on support panels and newly opened tickets',
+    ],
+  },
+  {
     version: '0.1.0-beta.7',
     date: '2026-10-15',
     title: 'The dashboard is here 🖥️',

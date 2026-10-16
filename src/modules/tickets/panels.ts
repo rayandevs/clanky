@@ -1,5 +1,5 @@
 import { AttachmentBuilder, DiscordAPIError, type TextChannel } from 'discord.js';
-import { TicketPanelMessageModel, type TicketPanelMessageRecord } from '../../database/models/index.js';
+import { TicketPanelArtworkModel, TicketPanelMessageModel, type TicketPanelMessageRecord } from '../../database/models/index.js';
 import { renderTicketPanelCard } from '../../render/ticketCards.js';
 import type { GuildSettings, TicketPanelSetting } from '../../settings/schema.js';
 import { v2 } from '../../ui/components.js';
@@ -9,12 +9,24 @@ export async function listTicketPanelMessages(guildId: string): Promise<TicketPa
   return TicketPanelMessageModel.find({ guildId }).sort({ updatedAt: -1 }).lean<TicketPanelMessageRecord[]>();
 }
 
-export async function ticketPanelPayload(settings: GuildSettings, panelSettings: TicketPanelSetting, ephemeral = false) {
+async function panelArtwork(guildId: string, settings: GuildSettings, panel: TicketPanelSetting): Promise<Buffer | null> {
+  if (panel.artwork.mode === 'none') return null;
+  if (panel.artwork.mode === 'custom') {
+    const asset = await TicketPanelArtworkModel.findOne({ guildId, panelId: panel.id }).lean();
+    return asset ? Buffer.from(asset.data) : null;
+  }
+  return renderTicketPanelCard(settings.general.accentColor, panel.artwork.template);
+}
+
+/** The bot preview, bot publish command, and dashboard publisher share this exact payload. */
+export async function ticketPanelPayload(settings: GuildSettings, panelSettings: TicketPanelSetting, ephemeral = false, guildId?: string) {
+  const artwork = guildId ? await panelArtwork(guildId, settings, panelSettings) : panelSettings.artwork.mode === 'template'
+    ? await renderTicketPanelCard(settings.general.accentColor, panelSettings.artwork.template)
+    : null;
   const fileName = 'ticket-panel.png';
-  const artwork = await renderTicketPanelCard(settings.general.accentColor);
   return {
-    ...v2(ticketPanel(settings, panelSettings, `attachment://${fileName}`), { ephemeral }),
-    files: [new AttachmentBuilder(artwork, { name: fileName })],
+    ...v2(ticketPanel(settings, panelSettings, artwork ? `attachment://${fileName}` : undefined), { ephemeral }),
+    ...(artwork ? { files: [new AttachmentBuilder(artwork, { name: fileName })] } : {}),
   };
 }
 
@@ -37,7 +49,7 @@ export async function publishTicketPanel(
       if (mode === 'update') return 'missing';
     }
     if (message) {
-      await message.edit({ ...await ticketPanelPayload(settings, panelSettings), attachments: [] });
+      await message.edit({ ...await ticketPanelPayload(settings, panelSettings, false, channel.guild.id), attachments: [] });
       await TicketPanelMessageModel.updateOne(filter, { $set: { messageId: message.id } });
       return 'updated';
     }
@@ -45,7 +57,7 @@ export async function publishTicketPanel(
     return 'missing';
   }
 
-  const message = await channel.send(await ticketPanelPayload(settings, panelSettings));
+  const message = await channel.send(await ticketPanelPayload(settings, panelSettings, false, channel.guild.id));
   await TicketPanelMessageModel.findOneAndUpdate(filter, { $set: { messageId: message.id } }, { upsert: true, returnDocument: 'after' });
   return 'posted';
 }

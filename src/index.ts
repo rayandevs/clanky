@@ -4,6 +4,7 @@ import { Clanky } from './client/Clanky.js';
 import { startDashboard } from './dashboard/server.js';
 import { logger, setLogLevel } from './core/logger.js';
 import { connectDatabase, disconnectDatabase } from './database/connection.js';
+import { startTranscriptAttachmentCleanup } from './modules/tickets/attachmentArchive.js';
 import { registerEvents } from './events/index.js';
 import { modules } from './modules/index.js';
 
@@ -12,12 +13,14 @@ logger.info(`Starting Clanky ${version.label} (${version.codename}) in ${env.NOD
 
 const client = new Clanky();
 let dashboard: Awaited<ReturnType<typeof startDashboard>> = null;
+let stopTranscriptAttachmentCleanup: () => void = () => undefined;
 client.register(modules);
 registerEvents(client);
 logger.info(`Loaded ${client.commands.size} commands and ${client.components.size} component handlers`);
 
 async function shutdown(signal: string): Promise<void> {
   logger.info(`${signal} received, shutting down…`);
+  stopTranscriptAttachmentCleanup();
   await dashboard?.close().catch(() => null);
   await client.destroy().catch(() => null);
   await disconnectDatabase().catch(() => null);
@@ -30,6 +33,7 @@ process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection',
 process.on('uncaughtException', (error) => logger.error('Uncaught exception', error));
 
 await connectDatabase();
+stopTranscriptAttachmentCleanup = startTranscriptAttachmentCleanup();
 await client.login(env.DISCORD_TOKEN);
 dashboard = await startDashboard(client).catch((error) => {
   logger.error('Dashboard failed to start', error);

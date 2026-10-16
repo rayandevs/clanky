@@ -25,6 +25,9 @@ const DIST = fileURLToPath(new URL('../../dashboard/dist/', import.meta.url));
  */
 export async function createDashboard(client: Clanky): Promise<FastifyInstance> {
   const app = Fastify({ trustProxy: env.DASHBOARD_TRUST_PROXY, logger: false, bodyLimit: 256 * 1024 });
+  for (const contentType of ['image/png', 'image/jpeg', 'image/webp']) {
+    app.addContentTypeParser(contentType, { parseAs: 'buffer', bodyLimit: 4 * 1024 * 1024 }, (_request, body, done) => done(null, body));
+  }
 
   await app.register(cookie, { secret: cookieSecret });
   await app.register(rateLimit, { global: false });

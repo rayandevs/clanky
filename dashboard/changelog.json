@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.1.0-alpha.3",
+    "date": "2026-10-16",
+    "title": "A clearer ticket desk",
+    "highlights": [
+      "Browse closed ticket transcripts with role-checked access for server administrators and ticket staff",
+      "Attachment files are archived and retained with each transcript instead of relying only on expiring Discord links",
+      "Choose panel artwork, transcript retention, and custom dashboard uploads in ticket settings",
+      "Ticket openings keep their key details in one image and one container"
+    ]
+  },
+  {
     "version": "0.1.0-alpha.2",
     "date": "2026-10-16",
     "title": "A better ticket desk",

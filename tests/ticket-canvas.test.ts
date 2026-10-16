@@ -6,10 +6,15 @@ import { renderTicketOpeningCard, renderTicketPanelCard } from '../src/render/ti
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 for (const [name, render] of [
-  ['panel banner', () => renderTicketPanelCard(0xe2702f)],
+  ['support panel banner', () => renderTicketPanelCard(0xe2702f, 'support')],
+  ['minimal panel banner', () => renderTicketPanelCard(0xe2702f, 'minimal')],
   ['ticket opening summary', () => renderTicketOpeningCard({
     accent: 0x5865f2,
+    ticketId: 42,
+    panelTitle: 'General Support',
     displayName: 'Rayan',
+    categoryLabel: 'Account help',
+    status: 'Waiting for staff',
   })],
 ] as const) {
   test(`renders ${name} as a valid 1000×300 PNG`, async () => {
@@ -20,3 +25,8 @@ for (const [name, render] of [
     assert.equal(image.height, 300);
   });
 }
+
+test('built-in panel templates produce distinct artwork', async () => {
+  const [support, minimal] = await Promise.all([renderTicketPanelCard(0xe2702f, 'support'), renderTicketPanelCard(0xe2702f, 'minimal')]);
+  assert.notDeepEqual(support, minimal);
+});

@@ -75,6 +75,7 @@ export interface GuildSettings {
     logChannelId: string | null;
     staffRoleIds: string[];
     maxOpenPerUser: number;
+    transcriptRetentionDays: '30' | '90' | '180' | '365' | 'forever';
     categories: Array<{ id: string; label: string; description: string }>;
     panels: TicketPanel[];
   };
@@ -140,6 +141,71 @@ export interface TicketPanel {
   parentId: string | null;
   logChannelId: string | null;
   staffRoleIds: string[] | null;
+  artwork: { mode: 'none' | 'template' | 'custom'; template: 'support' | 'minimal' };
+}
+
+export interface TicketTranscriptEntry {
+  ticketId: number;
+  openerId: string;
+  openerDisplayName: string;
+  panelTitle: string;
+  categoryLabel: string | null;
+  createdAt: string;
+  closedAt: string;
+  messageCount: number;
+  truncated: boolean;
+  expiresAt: string | null;
+}
+
+export interface TicketTranscriptMessage {
+  messageId: string;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  isBot: boolean;
+  content: string;
+  embeds: Array<{ title: string | null; description: string | null; fields: Array<{ name: string; value: string }> }>;
+  attachments: Array<{ name: string; url: string; contentType: string | null; size: number }>;
+  createdAt: string;
+}
+
+export interface TicketTranscriptDetail {
+  guildId: string;
+  ticketId: number;
+  channelId: string;
+  openerId: string;
+  openerDisplayName: string;
+  openerAvatarUrl: string | null;
+  panelTitle: string;
+  categoryLabel: string | null;
+  answers: Array<{ questionId: string; label: string; answer: string }>;
+  claimedBy: string | null;
+  claimedByName: string | null;
+  closedBy: string;
+  closedByName: string | null;
+  closeReason: string | null;
+  createdAt: string;
+  closedAt: string;
+  messageCount: number;
+  truncated: boolean;
+  expiresAt: string | null;
+}
+
+export interface TicketTranscriptListResponse {
+  guild: { id: string; name: string };
+  canManage: boolean;
+  total: number;
+  page: number;
+  pages: number;
+  entries: TicketTranscriptEntry[];
+}
+
+export interface TicketTranscriptDetailResponse {
+  transcript: TicketTranscriptDetail;
+  canManage: boolean;
+  messagePage: number;
+  messagePages: number;
+  messages: TicketTranscriptMessage[];
 }
 
 export interface SalvagePlayer {

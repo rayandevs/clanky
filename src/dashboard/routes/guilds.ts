@@ -1,11 +1,13 @@
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { ChannelType, PermissionFlagsBits, type Guild, type TextChannel } from 'discord.js';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Clanky } from '../../client/Clanky.js';
 import { createLogger } from '../../core/logger.js';
-import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketModel } from '../../database/models/index.js';
+import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketModel, TicketPanelArtworkModel, TicketTranscriptMessageModel, TicketTranscriptModel, type TicketTranscriptRecord } from '../../database/models/index.js';
 import { canManageAutomod, deleteRule, RULE_KINDS, ruleStates, syncAllRules, upsertRule, type RuleKind } from '../../modules/automod/service.js';
 import { listTicketPanelMessages, publishTicketPanel } from '../../modules/tickets/panels.js';
+import { MAX_TRANSCRIPT_ATTACHMENT_BYTES, readArchivedTranscriptAttachment } from '../../modules/tickets/attachmentArchive.js';
 import { guilds, salvage } from '../../services/index.js';
 import { MODULES } from '../../settings/registry.js';
 import { GuildSettingsSchema, type GuildSettings, type SettingsSection } from '../../settings/schema.js';
@@ -18,6 +20,12 @@ const log = createLogger('dashboard');
 
 const SECTIONS = Object.keys(GuildSettingsSchema.shape) as SettingsSection[];
 const DAY = 86_400_000;
+const MAX_PANEL_ART = 4 * 1024 * 1024;
+const MAX_PANEL_ART_PIXELS = 12_000_000;
+const MAX_PANEL_ART_DIMENSION = 4096;
+const MAX_PANEL_ART_PNG = 8 * 1024 * 1024;
+const TRANSCRIPT_PAGE_SIZE = 20;
+const TRANSCRIPT_MESSAGE_PAGE_SIZE = 50;
 
 const iconUrl = (id: string, icon: string | null) => (icon ? `https://cdn.discordapp.com/icons/${id}/${icon}.${icon.startsWith('a_') ? 'gif' : 'png'}?size=128` : null);
 
@@ -55,6 +63,36 @@ function resources(guild: Guild) {
     .map((r) => ({ id: r.id, name: r.name, color: r.color, managed: r.managed, assignable: !r.managed && r.position < top }));
   return { channels, roles };
 }
+
+async function ticketTranscriptAccess(client: Clanky, request: FastifyRequest, reply: FastifyReply) {
+  const { guildId } = request.params as { guildId: string };
+  const guild = /^\d{17,20}$/.test(guildId) ? client.guilds.cache.get(guildId) : undefined;
+  if (!guild) {
+    reply.code(404).send({ error: 'not_found', message: "Clanky isn't in that server." });
+    return null;
+  }
+  const member = await guild.members.fetch(request.session!.record.userId).catch(() => null);
+  if (!member) {
+    reply.code(403).send({ error: 'forbidden', message: 'You need to be a server administrator or have a configured ticket staff role.' });
+    return null;
+  }
+  if (member.permissions.has(PermissionFlagsBits.ManageGuild)) return { guild, member, isAdmin: true, memberRoleIds: [...member.roles.cache.keys()] };
+
+  const settings = await guilds.settings(guild.id);
+  const configured = new Set(settings.tickets.staffRoleIds);
+  for (const panel of settings.tickets.panels) {
+    for (const roleId of panel.staffRoleIds ?? settings.tickets.staffRoleIds) configured.add(roleId);
+  }
+  const memberRoleIds = [...member.roles.cache.keys()];
+  if (!memberRoleIds.some((roleId) => configured.has(roleId))) {
+    reply.code(403).send({ error: 'forbidden', message: 'You need a configured ticket staff role to view transcripts.' });
+    return null;
+  }
+  return { guild, member, isAdmin: false, memberRoleIds };
+}
+
+const transcriptExpiryFilter = () => ({ $or: [{ expiresAt: null }, { expiresAt: { $exists: false } }, { expiresAt: { $gt: new Date() } }] });
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Every channel/role ID in a section must exist in the server. */
 function checkIds(guild: Guild, section: SettingsSection, value: unknown): string | null {
@@ -180,6 +218,14 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
       return reply.code(400).send({ error: 'invalid', message: 'Some values are not valid.', issues: z.flattenError(parsed.error as z.ZodError).fieldErrors });
     }
     const value = parsed.data as GuildSettings[typeof section];
+    if (section === 'tickets') {
+      const ticketSettings = value as GuildSettings['tickets'];
+      const customPanels = ticketSettings.panels.filter((panel) => panel.artwork.mode === 'custom');
+      for (const panel of customPanels) {
+        const image = await TicketPanelArtworkModel.exists({ guildId: guild.id, panelId: panel.id });
+        if (!image) return reply.code(400).send({ error: 'invalid', message: `Upload an image for “${panel.title}” before selecting custom artwork.` });
+      }
+    }
     if (section === 'leveling') {
       const l = value as GuildSettings['leveling'];
       if (l.xpMin > l.xpMax) return reply.code(400).send({ error: 'invalid', message: 'Min XP must be lower than max XP.' });
@@ -250,6 +296,192 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
     } catch {
       return reply.code(400).send({ error: 'permissions', message: "Clanky can't post in that channel." });
     }
+  });
+
+  app.post('/api/guilds/:guildId/tickets/panels/:panelId/artwork', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { guild, member } = access;
+    const { panelId } = request.params as { panelId: string };
+    const panel = (await guilds.settings(guild.id)).tickets.panels.find((item) => item.id === panelId);
+    if (!panel) return reply.code(404).send({ error: 'not_found', message: 'That ticket panel no longer exists.' });
+    const raw = request.body;
+    if (!Buffer.isBuffer(raw) || raw.length === 0 || raw.length > MAX_PANEL_ART) {
+      return reply.code(400).send({ error: 'invalid', message: 'Choose an image under 4 MiB.' });
+    }
+    let image;
+    try {
+      image = await loadImage(raw);
+    } catch {
+      return reply.code(400).send({ error: 'invalid', message: 'That file is not a supported image.' });
+    }
+    if (!image.width || !image.height || image.width > MAX_PANEL_ART_DIMENSION || image.height > MAX_PANEL_ART_DIMENSION || image.width * image.height > MAX_PANEL_ART_PIXELS) {
+      return reply.code(400).send({ error: 'invalid', message: 'Image dimensions must be at most 4096×4096 and 12 megapixels.' });
+    }
+    const scale = Math.min(1, 1600 / image.width, 900 / image.height);
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = createCanvas(width, height);
+    canvas.getContext('2d').drawImage(image, 0, 0, width, height);
+    const normalized = canvas.toBuffer('image/png');
+    if (normalized.length > MAX_PANEL_ART_PNG) return reply.code(400).send({ error: 'invalid', message: 'The optimized image is too large. Try a smaller or simpler image.' });
+    await TicketPanelArtworkModel.findOneAndUpdate(
+      { guildId: guild.id, panelId },
+      { $set: { guildId: guild.id, panelId, contentType: 'image/png', data: normalized, uploadedBy: member.id } },
+      { upsert: true, returnDocument: 'after' },
+    );
+    return { ok: true, contentType: 'image/png', width, height };
+  });
+
+  app.get('/api/guilds/:guildId/tickets/panels/:panelId/artwork', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { panelId } = request.params as { panelId: string };
+    const asset = await TicketPanelArtworkModel.findOne({ guildId: access.guild.id, panelId }).lean();
+    if (!asset) return reply.code(404).send({ error: 'not_found', message: 'This panel has no uploaded image.' });
+    return reply.type('image/png').header('Cache-Control', 'private, max-age=60').send(Buffer.from(asset.data));
+  });
+
+  app.get('/api/guilds/:guildId/tickets/transcripts', async (request, reply) => {
+    const access = await ticketTranscriptAccess(client, request, reply);
+    if (!access) return;
+    const query = request.query as { page?: string; q?: string };
+    const page = Math.max(0, Math.min(10_000, Number(query.page) || 0));
+    const search = (query.q ?? '').trim().slice(0, 80);
+    const terms: object[] = [transcriptExpiryFilter()];
+    if (!access.isAdmin) terms.push({ staffRoleIds: { $in: access.memberRoleIds } });
+    if (search) {
+      const numericTicket = /^#?\d+$/.test(search) ? Number(search.replace(/^#/, '')) : null;
+      terms.push(numericTicket !== null
+        ? { ticketId: numericTicket }
+        : { $or: ['openerDisplayName', 'panelTitle', 'categoryLabel'].map((key) => ({ [key]: { $regex: escapeRegex(search), $options: 'i' } })) });
+    }
+    const filter = { guildId: access.guild.id, $and: terms };
+    const [total, rows] = await Promise.all([
+      TicketTranscriptModel.countDocuments(filter),
+      TicketTranscriptModel.find(filter).sort({ closedAt: -1, ticketId: -1 }).skip(page * TRANSCRIPT_PAGE_SIZE).limit(TRANSCRIPT_PAGE_SIZE).lean<TicketTranscriptRecord[]>(),
+    ]);
+    return {
+      guild: { id: access.guild.id, name: access.guild.name },
+      canManage: access.isAdmin,
+      total,
+      page,
+      pages: Math.max(1, Math.ceil(total / TRANSCRIPT_PAGE_SIZE)),
+      entries: rows.map((row) => ({
+        ticketId: row.ticketId,
+        openerId: row.openerId,
+        openerDisplayName: row.openerDisplayName,
+        panelTitle: row.panelTitle,
+        categoryLabel: row.categoryLabel,
+        createdAt: row.createdAt,
+        closedAt: row.closedAt,
+        messageCount: row.messageCount,
+        truncated: row.truncated,
+        expiresAt: row.expiresAt,
+      })),
+    };
+  });
+
+  app.get('/api/guilds/:guildId/tickets/transcripts/:ticketId', async (request, reply) => {
+    const access = await ticketTranscriptAccess(client, request, reply);
+    if (!access) return;
+    const { ticketId: rawTicketId } = request.params as { ticketId: string };
+    const ticketId = Number(rawTicketId);
+    if (!Number.isSafeInteger(ticketId) || ticketId < 1) return reply.code(400).send({ error: 'invalid', message: 'Invalid ticket number.' });
+    const page = Math.max(0, Math.min(19, Number((request.query as { page?: string }).page) || 0));
+    const permissionFilter = access.isAdmin ? {} : { staffRoleIds: { $in: access.memberRoleIds } };
+    const transcript = await TicketTranscriptModel.findOne({
+      guildId: access.guild.id,
+      ticketId,
+      ...permissionFilter,
+      $and: [transcriptExpiryFilter()],
+    }).lean<TicketTranscriptRecord>();
+    if (!transcript) return reply.code(404).send({ error: 'not_found', message: 'Transcript not found or you do not have access.' });
+    const messages = await TicketTranscriptMessageModel.find({ guildId: access.guild.id, ticketId, ...transcriptExpiryFilter() })
+      .sort({ createdAt: 1, messageId: 1 })
+      .skip(page * TRANSCRIPT_MESSAGE_PAGE_SIZE)
+      .limit(TRANSCRIPT_MESSAGE_PAGE_SIZE)
+      .lean();
+    return {
+      transcript: {
+        guildId: transcript.guildId,
+        ticketId: transcript.ticketId,
+        openerId: transcript.openerId,
+        openerDisplayName: transcript.openerDisplayName,
+        openerAvatarUrl: transcript.openerAvatarUrl,
+        panelTitle: transcript.panelTitle,
+        categoryLabel: transcript.categoryLabel,
+        answers: transcript.answers,
+        claimedBy: transcript.claimedBy,
+        claimedByName: transcript.claimedByName,
+        closedBy: transcript.closedBy,
+        closedByName: transcript.closedByName,
+        closeReason: transcript.closeReason,
+        createdAt: transcript.createdAt,
+        closedAt: transcript.closedAt,
+        messageCount: transcript.messageCount,
+        truncated: transcript.truncated,
+        expiresAt: transcript.expiresAt,
+      },
+      canManage: access.isAdmin,
+      messagePage: page,
+      messagePages: Math.max(1, Math.ceil(transcript.messageCount / TRANSCRIPT_MESSAGE_PAGE_SIZE)),
+      messages: messages.map((message) => ({
+        ...message,
+        attachments: message.attachments.map((attachment, index) => ({
+          name: attachment.name,
+          contentType: attachment.contentType,
+          size: attachment.size,
+          url: `/api/guilds/${access.guild.id}/tickets/transcripts/${ticketId}/attachments/${message.messageId}/${index}`,
+        })),
+      })),
+    };
+  });
+
+  app.get('/api/guilds/:guildId/tickets/transcripts/:ticketId/attachments/:messageId/:index', async (request, reply) => {
+    const access = await ticketTranscriptAccess(client, request, reply);
+    if (!access) return;
+    const { ticketId: rawTicketId, messageId, index: rawIndex } = request.params as { ticketId: string; messageId: string; index: string };
+    const ticketId = Number(rawTicketId);
+    const index = Number(rawIndex);
+    if (!Number.isSafeInteger(ticketId) || !Number.isSafeInteger(index) || index < 0) return reply.code(400).send({ error: 'invalid', message: 'Invalid transcript attachment.' });
+    const permissionFilter = access.isAdmin ? {} : { staffRoleIds: { $in: access.memberRoleIds } };
+    const transcriptExists = await TicketTranscriptModel.exists({ guildId: access.guild.id, ticketId, ...permissionFilter, $and: [transcriptExpiryFilter()] });
+    if (!transcriptExists) return reply.code(404).send({ error: 'not_found', message: 'Transcript not found or you do not have access.' });
+    const message = await TicketTranscriptMessageModel.findOne({ guildId: access.guild.id, ticketId, messageId, ...transcriptExpiryFilter() }).lean();
+    const attachment = message?.attachments[index];
+    if (!attachment) return reply.code(404).send({ error: 'not_found', message: 'Attachment not found.' });
+    const imageType = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes((attachment.contentType ?? '').toLowerCase());
+    const sendAttachment = (bytes: Buffer) => {
+      reply.header('X-Content-Type-Options', 'nosniff').header('Cache-Control', 'private, no-store');
+      if (imageType) return reply.type(attachment.contentType!).header('Content-Disposition', 'inline').send(bytes);
+      const safeName = attachment.name.replace(/[\r\n"\\]/g, '_').slice(0, 120) || 'ticket-attachment';
+      return reply.type('application/octet-stream').header('Content-Disposition', `attachment; filename="${safeName}"`).send(bytes);
+    };
+    if (attachment.archiveId) {
+      try {
+        const archived = await readArchivedTranscriptAttachment(attachment.archiveId);
+        if (archived) return sendAttachment(archived);
+      } catch (error) {
+        log.warn(`Could not read archived attachment for ticket #${ticketId}`, error);
+      }
+    }
+    let url: URL;
+    try {
+      url = new URL(attachment.url);
+    } catch {
+      return reply.code(404).send({ error: 'not_found', message: 'Attachment is unavailable.' });
+    }
+    if (url.protocol !== 'https:' || !['cdn.discordapp.com', 'media.discordapp.net'].includes(url.hostname) || attachment.size > MAX_TRANSCRIPT_ATTACHMENT_BYTES) {
+      return reply.code(400).send({ error: 'invalid', message: 'Attachment source is not allowed.' });
+    }
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000), redirect: 'error' }).catch(() => null);
+    if (!response?.ok) return reply.code(404).send({ error: 'not_found', message: 'Attachment is no longer available.' });
+    const contentLength = Number(response.headers.get('content-length') ?? 0);
+    if (contentLength > MAX_TRANSCRIPT_ATTACHMENT_BYTES) return reply.code(413).send({ error: 'too_large', message: 'Attachment is too large to preview.' });
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > MAX_TRANSCRIPT_ATTACHMENT_BYTES) return reply.code(413).send({ error: 'too_large', message: 'Attachment is too large to preview.' });
+    return sendAttachment(bytes);
   });
 
   app.get('/api/guilds/:guildId/audit', async (request, reply) => {

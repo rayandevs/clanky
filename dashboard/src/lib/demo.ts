@@ -3,7 +3,7 @@
  * Discord or MongoDB. Used only by `npm run build:demo`.
  */
 import { ApiError } from './api';
-import type { Channel, GuildListItem, GuildSettings, Me, Meta, Overview, Release, Role, RuleKind, SalvagePlayer, SectionId, SettingsPayload } from './types';
+import type { Channel, GuildListItem, GuildSettings, Me, Meta, Overview, Release, Role, RuleKind, SalvagePlayer, SectionId, SettingsPayload, TicketTranscriptDetailResponse, TicketTranscriptListResponse } from './types';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const id = (n: number) => `13${String(n).padStart(16, '0')}`;
@@ -29,8 +29,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.8', label: 'v0.1.0 Beta 8', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-alpha.2', label: 'v0.1.0 Alpha 2', codename: 'Scrapyard' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.9', label: 'v0.1.0 Beta 9', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-alpha.3', label: 'v0.1.0 Alpha 3', codename: 'Scrapyard' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -88,11 +88,11 @@ const defaults = (): GuildSettings => ({
   logging: { enabled: true, channelId: id(43), events: ['messageDelete', 'messageEdit', 'memberJoin', 'memberLeave', 'memberRoles', 'nickname'], ignoredChannelIds: [id(24)] },
   welcome: { enabled: true, channelId: id(11), message: 'Welcome to **{server}**, {user}! You are member **#{count}** 🎉', leaveEnabled: false, leaveMessage: '**{username}** left the server. 👋', autoRoleIds: [id(57)], showAvatar: true },
   tickets: {
-    enabled: true, parentId: id(30), logChannelId: id(44), staffRoleIds: [id(53)], maxOpenPerUser: 1,
+    enabled: true, parentId: id(30), logChannelId: id(44), staffRoleIds: [id(53)], maxOpenPerUser: 1, transcriptRetentionDays: '90',
     panels: [{
       id: 'general-support', title: 'Need help?', description: 'Press the button below to open a private ticket with our team.',
       questions: [{ id: 'topic', label: 'How can we help?', description: '', placeholder: 'Tell us a little about the issue', style: 'paragraph', required: true, minLength: 5, maxLength: 1000 }],
-      parentId: null, logChannelId: null, staffRoleIds: null,
+      parentId: null, logChannelId: null, staffRoleIds: null, artwork: { mode: 'template', template: 'support' },
     }],
     categories: [
       { id: 'support', label: 'General support', description: 'Questions about the server' },
@@ -177,6 +177,7 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.9', date: '2026-10-16', title: 'A clearer ticket desk 🎫', highlights: ['Choose custom, built-in, or no panel artwork', 'Read searchable ticket transcripts with archived attachments retained for the configured period', 'Keep tickets open if transcript messages or attachments cannot be safely archived'] },
     { version: '0.1.0-beta.8', date: '2026-10-16', title: 'A better ticket desk 🎫', highlights: ['Configure up to three ticket panels with custom intake forms and routing', 'A redesigned dashboard editor with previews and tracked panel updates', 'Canvas artwork on support panels and newly opened tickets'] },
     { version: '0.1.0-beta.7', date: '2026-10-15', title: 'The dashboard is here 🖥️', highlights: ['Change every setting from the web dashboard', 'See your Salvage profile, bag and collection online', 'Server overview with stats and change history'] },
     { version: '0.1.0-beta.6', date: '2026-10-15', title: 'Image screens 🖼️', highlights: ['Bag, shop and collection are now image cards', 'Your bag, credits, zone and boosts show on every game card', 'Shop buttons are numbered to match each row'] },
@@ -184,6 +185,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-alpha.3', date: '2026-10-16', title: 'A clearer ticket desk', highlights: ['Browse closed ticket transcripts with role-checked access for server administrators and ticket staff', 'Attachment files are archived and retained with each transcript instead of relying only on expiring Discord links', 'Choose panel artwork, transcript retention, and custom dashboard uploads in ticket settings'] },
     { version: '0.1.0-alpha.2', date: '2026-10-16', title: 'A better ticket desk', highlights: ['A panel-first ticket editor for up to three support entry points', 'Custom questions, topic options, and per-panel routing in one focused workspace', 'Live Discord preview and save-aware publish/update controls'] },
     { version: '0.1.0-alpha.1', date: '2026-10-15', title: 'First light 🔦', highlights: ['Log in with Discord', 'Every server setting in one place', 'Server overview with stats and history', 'Your Salvage profile, bag and collection', 'Personal preferences'] },
   ],
@@ -192,7 +194,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
 export async function demoApi<T>(method: string, path: string, body?: unknown): Promise<T> {
   await wait(method === 'GET' ? 260 : 420);
   const parts = path.split('?')[0]!.split('/').filter(Boolean); // ['api', ...]
-  const [, a, b, c, d] = parts;
+  const [, a, b, c, d, e] = parts;
   const ok = (value: unknown) => value as T;
 
   if (a === 'meta') return ok(meta);
@@ -241,6 +243,35 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
       else placements.push({ panelId: request.panelId, channelId: request.channelId, messageId: id(Date.now() % 10_000_000_000_000_000), updatedAt: now });
       postedTicketPanels.set(b, placements);
       return ok({ result: existing ? 'updated' : 'posted' });
+    }
+    if (c === 'tickets' && d === 'panels' && e && parts[6] === 'artwork' && method === 'POST') return ok({ ok: true, width: 1200, height: 600 });
+    if (c === 'tickets' && d === 'transcripts' && !e && method === 'GET') {
+      const params = new URLSearchParams(path.split('?')[1] ?? '');
+      const q = (params.get('q') ?? '').toLowerCase();
+      const entries: TicketTranscriptListResponse['entries'] = [
+        { ticketId: 42, openerId: id(901), openerDisplayName: 'Mira', panelTitle: 'General support', categoryLabel: 'Account question', createdAt: hoursAgo(52), closedAt: hoursAgo(48), messageCount: 8, truncated: false, expiresAt: new Date(Date.now() + 42 * 86_400_000).toISOString() },
+        { ticketId: 41, openerId: id(902), openerDisplayName: 'Kite', panelTitle: 'Report a member', categoryLabel: 'Member report', createdAt: hoursAgo(120), closedAt: hoursAgo(117), messageCount: 14, truncated: false, expiresAt: new Date(Date.now() + 87 * 86_400_000).toISOString() },
+        { ticketId: 40, openerId: id(903), openerDisplayName: 'Nova', panelTitle: 'General support', categoryLabel: 'Bug report', createdAt: hoursAgo(235), closedAt: hoursAgo(230), messageCount: 1000, truncated: true, expiresAt: new Date(Date.now() + 176 * 86_400_000).toISOString() },
+      ].filter((item) => !q || String(item.ticketId).includes(q.replace(/^#/, '')) || `${item.openerDisplayName} ${item.panelTitle} ${item.categoryLabel}`.toLowerCase().includes(q));
+      return ok({ guild: { id: b, name: g.name }, canManage: true, total: entries.length, page: 0, pages: 1, entries } satisfies TicketTranscriptListResponse);
+    }
+    if (c === 'tickets' && d === 'transcripts' && e && method === 'GET') {
+      const ticketId = Number(e);
+      const closedAt = hoursAgo(48);
+      const createdAt = hoursAgo(52);
+      const messages = [
+        { messageId: 'demo-message-1', authorId: id(901), authorName: 'Mira', authorAvatarUrl: avatar(2), isBot: false, content: 'Hi! I need help with a sign-in issue.', embeds: [], attachments: [], createdAt },
+        { messageId: 'demo-message-2', authorId: id(50), authorName: 'Clanky', authorAvatarUrl: avatar(0), isBot: true, content: 'Ticket #42 opened · Account question', embeds: [], attachments: [], createdAt: hoursAgo(51.8) },
+        { messageId: 'demo-message-3', authorId: id(904), authorName: 'Rowan · Support', authorAvatarUrl: avatar(3), isBot: false, content: 'I can help. Please try the password reset link, then let me know if the email arrives.', embeds: [], attachments: [], createdAt: hoursAgo(51.5) },
+        { messageId: 'demo-message-4', authorId: id(901), authorName: 'Mira', authorAvatarUrl: avatar(2), isBot: false, content: 'That fixed it, thank you!', embeds: [], attachments: [], createdAt: hoursAgo(50.9) },
+      ];
+      return ok({
+        transcript: { guildId: b, ticketId, channelId: id(990), openerId: id(901), openerDisplayName: 'Mira', openerAvatarUrl: avatar(2), panelTitle: 'General support', categoryLabel: 'Account question', answers: [{ questionId: 'topic', label: 'What do you need help with?', answer: 'I cannot sign in after changing my email.' }], claimedBy: id(904), claimedByName: 'Rowan · Support', closedBy: id(904), closedByName: 'Rowan · Support', closeReason: 'Resolved', createdAt, closedAt, messageCount: messages.length, truncated: false, expiresAt: new Date(Date.now() + 42 * 86_400_000).toISOString() },
+        canManage: true,
+        messagePage: 0,
+        messagePages: 1,
+        messages,
+      } satisfies TicketTranscriptDetailResponse);
     }
   }
   throw new ApiError(404, 'Not found', 'not_found');

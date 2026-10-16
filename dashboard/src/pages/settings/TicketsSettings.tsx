@@ -1,14 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Check, Plus, Send, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowDown, ArrowUp, Check, FileText, Image as ImageIcon, Plus, Send, Trash2, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'wouter';
 import { Container, DButton, DiscordWindow, DSelect, Message, Row, Text, Title } from '@/components/discord';
 import { Panel, SaveBar, settingsKey, useDraft } from '@/components/dash';
 import { ChannelPicker, RolePicker } from '@/components/pickers';
 import { useToast } from '@/components/Toast';
 import { Badge, Button, Emoji, Field, Input, Segmented, Switch, Textarea } from '@/components/ui';
-import { api, ApiError, queryClient } from '@/lib/api';
+import { api, ApiError, queryClient, uploadTicketArtwork } from '@/lib/api';
 import type { SettingsPayload, TicketPanel, TicketQuestion } from '@/lib/types';
-import { hex } from '@/lib/utils';
+import { DEMO, hex } from '@/lib/utils';
 import { OffNotice, SectionHeader } from './shared';
 
 type Props = { guildId: string; data: SettingsPayload };
@@ -122,12 +123,21 @@ export default function TicketsSettings({ guildId, data }: Props) {
   const draft = useDraft(guildId, 'tickets', data.settings.tickets);
   const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
   const [saveAttempted, setSaveAttempted] = useState(false);
+  const [uploadingArtwork, setUploadingArtwork] = useState(false);
+  const [artworkUrls, setArtworkUrls] = useState<Record<string, string>>({});
+  const [artworkVersion, setArtworkVersion] = useState<Record<string, number>>({});
+  const objectUrls = useRef(new Set<string>());
+  const toast = useToast();
+  useEffect(() => () => objectUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
   if (!draft.draft) return null;
   const value = draft.draft;
   const panel = value.panels.find((item) => item.id === selectedPanelId) ?? value.panels[0];
   const accent = hex(data.settings.general.accentColor);
   const maxQuestions = 5 - (value.categories.length ? 1 : 0);
-  const errors = makeValidationErrors(value);
+  const errors = [
+    ...makeValidationErrors(value),
+    ...value.panels.filter((item) => item.artwork.mode === 'custom' && data.settings.tickets.panels.find((original) => original.id === item.id)?.artwork.mode !== 'custom' && !artworkVersion[item.id]).map((item) => `Upload a custom image for “${item.title || 'Untitled panel'}” before saving.`),
+  ];
 
   const setPanels = (panels: TicketPanel[]) => draft.set('panels', panels);
   const updatePanel = (panelId: string, patch: Partial<TicketPanel>) =>
@@ -147,6 +157,7 @@ export default function TicketsSettings({ guildId, data }: Props) {
       parentId: null,
       logChannelId: null,
       staffRoleIds: null,
+      artwork: { mode: 'template', template: 'support' },
     }]);
     setSelectedPanelId(id);
   };
@@ -189,6 +200,28 @@ export default function TicketsSettings({ guildId, data }: Props) {
     draft.save();
   };
 
+  const uploadArtwork = async (file: File) => {
+    if (!panel) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024) {
+      toast('Choose a PNG, JPEG, or WebP image under 4 MiB.', 'bad');
+      return;
+    }
+    setUploadingArtwork(true);
+    try {
+      await uploadTicketArtwork(guildId, panel.id, file);
+      const localUrl = URL.createObjectURL(file);
+      objectUrls.current.add(localUrl);
+      setArtworkUrls((current) => ({ ...current, [panel.id]: localUrl }));
+      setArtworkVersion((current) => ({ ...current, [panel.id]: Date.now() }));
+      updatePanel(panel.id, { artwork: { ...panel.artwork, mode: 'custom' } });
+      toast('Panel image uploaded. Save settings to use it.');
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : 'Could not upload that image.', 'bad');
+    } finally {
+      setUploadingArtwork(false);
+    }
+  };
+
   return (
     <>
       <SectionHeader
@@ -204,7 +237,11 @@ export default function TicketsSettings({ guildId, data }: Props) {
         </div>
       )}
       <OffNotice show={!value.enabled}>
-        <Panel title="Server defaults" description="These settings apply to every panel unless you add an override below.">
+        <Panel
+          title="Server defaults"
+          description="These settings apply to every panel unless you add an override below."
+          action={<Link href={`/dashboard/${guildId}/transcripts`} className="inline-flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-[12px] font-semibold text-muted transition-colors hover:bg-white/[0.04] hover:text-white"><FileText className="size-3.5" /> Transcript history</Link>}
+        >
           <div className="grid gap-x-6 md:grid-cols-2">
             <Field label="Default ticket category" description="New private channels are created under this category.">
               <ChannelPicker value={value.parentId} onChange={(id) => draft.set('parentId', id)} channels={data.resources.channels} kind="category" placeholder="Choose a category" testId="picker-ticket-default-category" />
@@ -222,6 +259,20 @@ export default function TicketsSettings({ guildId, data }: Props) {
               </div>
             </Field>
           </div>
+          <Field label="Dashboard transcript retention" description="Attachments are copied to the archive when a ticket closes and kept for this period (up to 25 MiB per file, 100 MiB and 500 files per ticket). Over-limit or unavailable files must be removed before closing. Log-channel and member-DM text copies are unchanged.">
+            <select
+              value={value.transcriptRetentionDays}
+              onChange={(event) => draft.set('transcriptRetentionDays', event.target.value as typeof value.transcriptRetentionDays)}
+              className="h-10 w-full rounded-xl border border-line bg-ink-800 px-3 text-[13px] text-white outline-none focus:border-rust-400/50 md:max-w-xs"
+              data-testid="select-ticket-transcript-retention"
+            >
+              <option value="30">30 days</option>
+              <option value="90">90 days (default)</option>
+              <option value="180">180 days</option>
+              <option value="365">365 days</option>
+              <option value="forever">Keep indefinitely</option>
+            </select>
+          </Field>
         </Panel>
 
         <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
@@ -308,6 +359,67 @@ export default function TicketsSettings({ guildId, data }: Props) {
                   </Field>
                 </Panel>
 
+                <Panel title="Panel artwork" description="Choose an understated built-in style, upload server-specific art, or keep the panel text-only. Opening tickets still use their own single summary card.">
+                  <Field label="Public panel image" description="Custom art is uploaded in the dashboard. Discord settings can switch between built-in templates or no image.">
+                    <Segmented
+                      value={panel.artwork.mode}
+                      options={[{ value: 'template', label: 'Template' }, { value: 'custom', label: 'Custom' }, { value: 'none', label: 'No image' }]}
+                      onChange={(mode) => updatePanel(panel.id, { artwork: { ...panel.artwork, mode: mode as TicketPanel['artwork']['mode'] } })}
+                    />
+                  </Field>
+                  {panel.artwork.mode === 'template' && (
+                    <Field label="Built-in style" description="Both styles inherit the server’s accent color and are posted as a single natural banner.">
+                      <Segmented
+                        value={panel.artwork.template}
+                        options={[{ value: 'support', label: 'Support desk' }, { value: 'minimal', label: 'Minimal' }]}
+                        onChange={(template) => updatePanel(panel.id, { artwork: { ...panel.artwork, template: template as TicketPanel['artwork']['template'] } })}
+                      />
+                    </Field>
+                  )}
+                  {panel.artwork.mode === 'custom' && (
+                    <div className="space-y-3 rounded-2xl border border-line bg-black/15 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[13px] font-semibold">Custom panel image</p>
+                          <p className="mt-1 text-[11px] text-faint">PNG, JPEG, or WebP · up to 4 MiB · normalized to PNG</p>
+                        </div>
+                        <label className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-line px-3 text-[12px] font-semibold transition-colors hover:bg-white/[0.04] ${uploadingArtwork ? 'pointer-events-none opacity-50' : ''}`}>
+                          <Upload className="size-3.5" /> {uploadingArtwork ? 'Uploading…' : 'Choose image'}
+                          <input
+                            className="sr-only"
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            disabled={uploadingArtwork}
+                            onChange={(event) => {
+                              const file = event.currentTarget.files?.[0];
+                              event.currentTarget.value = '';
+                              if (file) void uploadArtwork(file);
+                            }}
+                            data-testid="input-ticket-panel-artwork"
+                          />
+                        </label>
+                      </div>
+                      {artworkUrls[panel.id] || !DEMO ? (
+                        <img
+                          src={artworkUrls[panel.id] ?? `/api/guilds/${guildId}/tickets/panels/${panel.id}/artwork?v=${artworkVersion[panel.id] ?? 0}`}
+                          alt={`Uploaded artwork preview for ${panel.title}`}
+                          className="max-h-56 w-full rounded-xl border border-line bg-ink-900 object-contain"
+                          data-testid="img-ticket-panel-artwork-preview"
+                        />
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-line px-4 py-5 text-center text-[12px] text-faint">Upload an image to preview it here.</div>
+                      )}
+                    </div>
+                  )}
+                  {panel.artwork.mode === 'none' && <p className="rounded-xl border border-line bg-black/15 px-4 py-3 text-[12px] text-muted">The posted public panel will contain its title, description, and open button only.</p>}
+                  {panel.artwork.mode === 'template' && (
+                    <div className="flex items-center gap-3 rounded-2xl border border-line bg-[#111118] px-4 py-4">
+                      <div className="grid size-12 shrink-0 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.04]"><ImageIcon className="size-5 text-rust-300" /></div>
+                      <div><p className="stamp text-[10px] text-rust-300">{panel.artwork.template === 'minimal' ? 'PRIVATE HELP DESK' : 'SUPPORT DESK'}</p><p className="mt-1 text-[13px] font-semibold">{panel.artwork.template === 'minimal' ? 'Tell us what is going on.' : 'A private space for help.'}</p><p className="mt-1 text-[11px] text-muted">{panel.artwork.template === 'minimal' ? 'A private chat with the right team.' : 'Start a conversation with the team.'}</p></div>
+                    </div>
+                  )}
+                </Panel>
+
                 <Panel
                   title="Intake questions"
                   description={`${panel.questions.length}/${maxQuestions} questions · Discord allows five modal fields in total${value.categories.length ? ', including the shared topic selector' : ''}.`}
@@ -347,13 +459,22 @@ export default function TicketsSettings({ guildId, data }: Props) {
                     <DiscordWindow channel="help-desk">
                       <Message>
                         <Container accent={accent}>
-                          <div className="mb-3 flex items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/[0.06] bg-[#17171e] px-4 py-3">
-                            <div>
-                              <p className="stamp text-[10px] tracking-[0.16em] text-rust-300">PRIVATE SUPPORT</p>
-                              <p className="mt-1 text-[13px] font-medium text-dc-muted">A direct line to your team.</p>
+                          {panel.artwork.mode === 'template' && (
+                            <div className="mb-3 flex items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/[0.06] bg-[#17171e] px-4 py-3">
+                              <div>
+                                <p className="stamp text-[10px] tracking-[0.16em] text-rust-300">{panel.artwork.template === 'minimal' ? 'PRIVATE HELP DESK' : 'SUPPORT DESK'}</p>
+                                <p className="mt-1 text-[13px] font-medium text-dc-muted">{panel.artwork.template === 'minimal' ? 'A private chat with the right team.' : 'Start a conversation with the team.'}</p>
+                              </div>
+                              <Emoji e="🎫" className="size-10" />
                             </div>
-                            <Emoji e="🎫" className="size-10" />
-                          </div>
+                          )}
+                          {panel.artwork.mode === 'custom' && (
+                            <div className="mb-3 overflow-hidden rounded-lg border border-white/[0.06] bg-[#17171e]">
+                              {artworkUrls[panel.id] || !DEMO
+                                ? <img src={artworkUrls[panel.id] ?? `/api/guilds/${guildId}/tickets/panels/${panel.id}/artwork?v=${artworkVersion[panel.id] ?? 0}`} alt="Custom ticket panel art" className="max-h-48 w-full object-cover" />
+                                : <div className="flex h-24 items-center justify-center text-[12px] text-dc-muted">Upload custom artwork to preview it.</div>}
+                            </div>
+                          )}
                           <Title>{panel.title || ' '}</Title>
                           <Text>{panel.description || ' '}</Text>
                           {value.categories.length > 0 && <DSelect placeholder="Choose a topic" />}

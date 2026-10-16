@@ -65,6 +65,12 @@ export const TicketQuestion = z.object({
 }).refine((question) => question.minLength <= question.maxLength, { message: 'Minimum answer length must not exceed maximum length.' });
 export type TicketQuestionSetting = z.infer<typeof TicketQuestion>;
 
+export const TicketPanelArtwork = z.object({
+  mode: z.enum(['none', 'template', 'custom']).default('template'),
+  template: z.enum(['support', 'minimal']).default('support'),
+}).default({ mode: 'template', template: 'support' });
+export type TicketPanelArtworkSetting = z.infer<typeof TicketPanelArtwork>;
+
 export const TicketPanelSettings = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,19}$/),
   title: z.string().trim().min(1).max(100).default('Need help?'),
@@ -74,6 +80,7 @@ export const TicketPanelSettings = z.object({
   parentId: channel,
   logChannelId: channel,
   staffRoleIds: roles(10).nullable().default(null),
+  artwork: TicketPanelArtwork,
 });
 export type TicketPanelSetting = z.infer<typeof TicketPanelSettings>;
 
@@ -85,6 +92,7 @@ const DEFAULT_TICKET_PANEL = {
   parentId: null,
   logChannelId: null,
   staffRoleIds: null,
+  artwork: { mode: 'template' as const, template: 'support' as const },
 };
 
 export const TicketSettings = z.object({
@@ -94,6 +102,8 @@ export const TicketSettings = z.object({
   logChannelId: channel,
   staffRoleIds: roles(10),
   maxOpenPerUser: z.number().int().min(1).max(5).default(1),
+  /** Retention for the dashboard's structured transcript copy; forever disables expiry. */
+  transcriptRetentionDays: z.enum(['30', '90', '180', '365', 'forever']).default('90'),
   categories: z.array(TicketCategory).max(10).default([]),
   panels: z.array(TicketPanelSettings).min(1).max(3).default(() => [DEFAULT_TICKET_PANEL]),
 }).superRefine((settings, ctx) => {

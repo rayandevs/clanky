@@ -1,40 +1,25 @@
 import { ButtonStyle, ContainerBuilder } from 'discord.js';
 import { cid } from '../../core/customId.js';
-import { timestamp } from '../../core/time.js';
 import type { TicketRecord } from '../../database/models/index.js';
 import type { GuildSettings, TicketPanelSetting } from '../../settings/schema.js';
 import { button, divider, panel, row, text } from '../../ui/components.js';
-import { emoji } from '../../ui/emoji.js';
 import { colors } from '../../ui/theme.js';
 
-export function ticketPanel(settings: GuildSettings, panelSettings: TicketPanelSetting, imageUrl: string): ContainerBuilder {
-  return panel({ title: panelSettings.title, emoji: 'ticket', description: panelSettings.description, accent: settings.general.accentColor })
-    .addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(imageUrl).setDescription(`Support panel artwork for ${panelSettings.title}`)))
-    .addActionRowComponents(
+export function ticketPanel(settings: GuildSettings, panelSettings: TicketPanelSetting, imageUrl?: string): ContainerBuilder {
+  const container = panel({ title: panelSettings.title, emoji: 'ticket', description: panelSettings.description, accent: settings.general.accentColor });
+  if (imageUrl) container.addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(imageUrl).setDescription(`Support panel artwork for ${panelSettings.title}`)));
+  return container.addActionRowComponents(
     row(button({ id: cid('tk', 'open', panelSettings.id), label: 'Open a ticket', emoji: 'ticket', style: ButtonStyle.Primary })),
   );
 }
 
-export function ticketArtwork(imageUrl: string, description: string, accent: number): ContainerBuilder {
-  return new ContainerBuilder()
-    .setAccentColor(accent)
-    .addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(imageUrl).setDescription(description)));
-}
-
-export function ticketHeader(ticket: TicketRecord, settings: GuildSettings): ContainerBuilder {
-  const category = settings.tickets.categories.find((c) => c.id === ticket.category);
-  const lines = [
-    `${emoji('user')} **Opened by** <@${ticket.openerId}> ${timestamp(ticket.createdAt, 'R')}`,
-    category ? `${emoji('list')} **Category** · ${category.label}` : null,
-    ticket.claimedBy ? `${emoji('claim')} **Claimed by** <@${ticket.claimedBy}>` : `${emoji('loading')} Waiting for a staff member`,
-  ].filter(Boolean);
-
+export function ticketHeader(ticket: TicketRecord, settings: GuildSettings, imageUrl = 'attachment://ticket-opening.png'): ContainerBuilder {
   const answers = ticket.answers?.length
     ? ticket.answers.map((answer) => text(`**${answer.label}**\n${answer.answer || '*No answer provided*'}`))
     : [text(`**Topic**\n${ticket.topic || 'No topic given.'}`)];
 
-  return panel({ title: `Ticket #${ticket.ticketId}`, emoji: 'ticket', description: ticket.panelTitle, accent: ticket.claimedBy ? colors.success : settings.general.accentColor })
-    .addTextDisplayComponents(text(lines.join('\n')))
+  return panel({ title: 'Ticket details', emoji: 'ticket', accent: ticket.claimedBy ? colors.success : settings.general.accentColor })
+    .addMediaGalleryComponents((gallery) => gallery.addItems((item) => item.setURL(imageUrl).setDescription(`Ticket #${ticket.ticketId}, opened by ${ticket.openerDisplayName ?? ticket.openerId}${ticket.categoryLabel ? `, category ${ticket.categoryLabel}` : ''}`)))
     .addSeparatorComponents(divider())
     .addTextDisplayComponents(...answers)
     .addActionRowComponents(

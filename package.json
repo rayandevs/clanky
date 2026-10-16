@@ -1,6 +1,6 @@
 {
   "name": "clanky",
-  "version": "0.1.0-beta.8",
+  "version": "0.1.0-beta.9",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

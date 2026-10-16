@@ -19,7 +19,7 @@ import { notice, v2 } from '../../ui/components.js';
 import { reply, respond } from '../../ui/respond.js';
 import { publishTicketPanel } from './panels.js';
 import { ticketHeader } from './render.js';
-import { closeTicket, createTicket, findTicket, isStaff, openTicketCount, ticketRouting } from './service.js';
+import { closeTicket, createTicket, findTicket, isStaff, openTicketCount, ticketOpeningAttachment, ticketRouting } from './service.js';
 
 function closeModal(ticketId: number) {
   return new ModalBuilder()
@@ -153,11 +153,16 @@ const ticketComponents = guildComponents({
       if (!isStaff(interaction.member, settings, ticket)) return reply(interaction, 'error', 'Only staff can claim tickets.');
       const updated = await TicketModel.findOneAndUpdate(
         { _id: (ticket as TicketRecord & { _id: unknown })._id, claimedBy: null },
-        { $set: { claimedBy: interaction.user.id } },
+        { $set: { claimedBy: interaction.user.id, claimedByName: interaction.member.displayName } },
         { returnDocument: 'after' },
       ).lean<TicketRecord>();
       if (!updated) return reply(interaction, 'info', 'Someone already claimed this ticket.');
-      await interaction.update({ components: [...interaction.message.components.slice(0, -1), ticketHeader(updated, settings)] });
+      const openingFile = await ticketOpeningAttachment(updated, settings);
+      await interaction.update({
+        components: [...interaction.message.components.slice(0, -1), ticketHeader(updated, settings)],
+        files: [openingFile],
+        attachments: [],
+      });
       return interaction.followUp(v2(notice('success', `${interaction.user} will help you with this ticket.`)));
     }
 
@@ -195,7 +200,7 @@ const ticketComponents = guildComponents({
       const channel = interaction.guild.channels.cache.get(ticket.channelId) as TextChannel | undefined;
       if (!channel) return reply(interaction, 'error', "I couldn't find the ticket channel.");
       const reason = interaction.fields.getTextInputValue('reason').trim() || null;
-      await interaction.reply(v2(notice('info', 'Closing this ticket in **5 seconds**. A transcript will be saved. 📜')));
+      await interaction.reply(v2(notice('info', 'Preparing the transcript and archiving attachments. This ticket will close when that finishes. 📜')));
       await closeTicket(channel, ticket, interaction.member, reason);
     }
   },

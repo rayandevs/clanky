@@ -30,6 +30,25 @@ export async function api<T>(method: Method, path: string, body?: unknown): Prom
 
 export const get = <T,>(path: string) => api<T>('GET', path);
 
+/** Upload a panel image as raw bytes; demo mode simulates the write. */
+export async function uploadTicketArtwork(guildId: string, panelId: string, file: File): Promise<{ ok: true; width?: number; height?: number }> {
+  const path = `/api/guilds/${guildId}/tickets/panels/${panelId}/artwork`;
+  if (DEMO) {
+    const { demoApi } = await import('./demo');
+    return demoApi('POST', path, { name: file.name, contentType: file.type, size: file.size }) as Promise<{ ok: true }>;
+  }
+  const response = await fetch(path, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json', 'Content-Type': file.type, 'X-Clanky': '1' },
+    body: file,
+  });
+  const data = (await response.json().catch(() => ({}))) as { message?: string; error?: string; width?: number; height?: number };
+  if (response.status === 401) void queryClient.invalidateQueries({ queryKey: ['/api/me'] });
+  if (!response.ok) throw new ApiError(response.status, data.message ?? 'Could not upload that image.', data.error);
+  return data as { ok: true; width?: number; height?: number };
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

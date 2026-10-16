@@ -71,7 +71,8 @@ export const ticketsPage: SettingsPage = {
     if (state[0] === 'manage') {
       const panel = s.panels.find((item) => item.id === state[1]) ?? s.panels[0]!;
       const questionOptions = panel.questions.map((q) => ({ label: q.label.slice(0, 100), value: q.id, description: `${q.style === 'short' ? 'Short' : 'Paragraph'} · ${q.required ? 'required' : 'optional'}` }));
-      const container = pageHeader(env, 'tickets', `**Panel** · ${panel.title}\n**Form** · ${panel.questions.length} question${panel.questions.length === 1 ? '' : 's'}${s.categories.length ? ' + topic selector' : ''}\n**Routing overrides** · ${panel.parentId || panel.logChannelId || panel.staffRoleIds !== null ? 'Custom' : 'Using server defaults'}`)
+      const artworkLabel = panel.artwork.mode === 'none' ? 'No panel image' : panel.artwork.mode === 'custom' ? 'Custom image · change in dashboard' : `${panel.artwork.template === 'minimal' ? 'Minimal' : 'Support desk'} template`;
+      const container = pageHeader(env, 'tickets', `**Panel** · ${panel.title}\n**Form** · ${panel.questions.length} question${panel.questions.length === 1 ? '' : 's'}${s.categories.length ? ' + topic selector' : ''}\n**Artwork** · ${artworkLabel}\n**Routing overrides** · ${panel.parentId || panel.logChannelId || panel.staffRoleIds !== null ? 'Custom' : 'Using server defaults'}`)
         .addActionRowComponents(row(actionButton('tickets', 'back', 'Back to ticket settings', 'back')))
         .addActionRowComponents(
           row(
@@ -93,6 +94,12 @@ export const ticketsPage: SettingsPage = {
         .addActionRowComponents(channelPicker(env, 'tickets', 'route-parent', { current: panel.parentId, placeholder: `Default: ${channelMention(s.parentId)}`, types: [ChannelType.GuildCategory] }, [panel.id]))
         .addActionRowComponents(channelPicker(env, 'tickets', 'route-log', { current: panel.logChannelId, placeholder: `Default: ${channelMention(s.logChannelId)}` }, [panel.id]))
         .addActionRowComponents(rolePicker(env, 'tickets', 'route-staff', { current: panel.staffRoleIds ?? s.staffRoleIds, placeholder: panel.staffRoleIds === null ? 'Staff roles (server default)' : 'Panel staff roles', max: 10 }, [panel.id]))
+        .addActionRowComponents(row(new StringSelectMenuBuilder().setCustomId(sid('tickets', 'panel-art', panel.id)).setPlaceholder('Choose panel artwork').addOptions(
+          { label: 'No image', value: 'none', default: panel.artwork.mode === 'none', description: 'Post panel text and button only' },
+          { label: 'Support desk template', value: 'template:support', default: panel.artwork.mode === 'template' && panel.artwork.template === 'support' },
+          { label: 'Minimal template', value: 'template:minimal', default: panel.artwork.mode === 'template' && panel.artwork.template === 'minimal' },
+          ...(panel.artwork.mode === 'custom' ? [{ label: 'Keep custom image', value: 'custom', default: true, description: 'Custom uploads are managed in the dashboard' }] : []),
+        )))
         .addActionRowComponents(row(button({ id: sid('tickets', 'route-reset', panel.id), label: 'Use server routing defaults', emoji: 'refresh' })));
       if (questionOptions.length) {
         container.addActionRowComponents(row(new StringSelectMenuBuilder().setCustomId(sid('tickets', 'question-edit', panel.id)).setPlaceholder('Choose a question to edit').addOptions(questionOptions)));
@@ -117,13 +124,22 @@ export const ticketsPage: SettingsPage = {
       `${emoji('list')} **Topics** · ${s.categories.length ? s.categories.map((c) => c.label).join(', ') : '`None`'}`,
       `${emoji('ticket')} **Panels** · ${s.panels.length}/3`,
       `${emoji('user')} **Open tickets per member** · ${s.maxOpenPerUser}`,
+      `${emoji('transcript')} **Dashboard transcript retention** · ${s.transcriptRetentionDays === 'forever' ? 'Keep forever' : `${s.transcriptRetentionDays} days`}`,
+      'Attachments are archived when tickets close · up to 25 MiB/file, 100 MiB and 500 files/ticket; over-limit or unavailable files must be removed before closing',
     ].join('\n');
 
     const container = pageHeader(env, 'tickets', summary)
       .addActionRowComponents(row(toggleButton('tickets', 'toggle', 'Module', s.enabled), actionButton('tickets', 'manage', 'Manage panels and forms', 'edit'), actionButton('tickets', 'add-cat', 'Add topic', 'add')))
       .addActionRowComponents(channelPicker(env, 'tickets', 'parent', { current: s.parentId, placeholder: 'Default ticket category', types: [ChannelType.GuildCategory] }))
       .addActionRowComponents(channelPicker(env, 'tickets', 'log', { current: s.logChannelId, placeholder: 'Default transcript channel' }))
-      .addActionRowComponents(rolePicker(env, 'tickets', 'staff', { current: s.staffRoleIds, placeholder: 'Default staff roles', max: 10 }));
+      .addActionRowComponents(rolePicker(env, 'tickets', 'staff', { current: s.staffRoleIds, placeholder: 'Default staff roles', max: 10 }))
+      .addActionRowComponents(row(new StringSelectMenuBuilder().setCustomId(sid('tickets', 'retention')).setPlaceholder('Dashboard transcript retention').addOptions(
+        { label: '30 days', value: '30', default: s.transcriptRetentionDays === '30' },
+        { label: '90 days · default', value: '90', default: s.transcriptRetentionDays === '90' },
+        { label: '180 days', value: '180', default: s.transcriptRetentionDays === '180' },
+        { label: '365 days', value: '365', default: s.transcriptRetentionDays === '365' },
+        { label: 'Keep indefinitely', value: 'forever', default: s.transcriptRetentionDays === 'forever' },
+      )));
 
     if (s.categories.length) {
       container.addActionRowComponents(
@@ -157,6 +173,13 @@ export const ticketsPage: SettingsPage = {
       case 'staff':
         await save(ctx, (d) => void (d.tickets.staffRoleIds = selectedIds(interaction)));
         return 'render';
+      case 'retention': {
+        const value = selectedIds(interaction)[0];
+        if (value && ['30', '90', '180', '365', 'forever'].includes(value)) {
+          await save(ctx, (d) => void (d.tickets.transcriptRetentionDays = value as typeof d.tickets.transcriptRetentionDays));
+        }
+        return 'render';
+      }
       case 'manage':
         return manage();
       case 'back':
@@ -175,6 +198,19 @@ export const ticketsPage: SettingsPage = {
         if (!panel) return manage();
         await save(ctx, (d) => void (d.tickets.panels.find((p) => p.id === panel.id)!.staffRoleIds = selectedIds(interaction)));
         return manage(panel.id);
+      case 'panel-art': {
+        if (!panel) return manage();
+        const value = selectedIds(interaction)[0];
+        if (value === 'none') await save(ctx, (d) => void (d.tickets.panels.find((p) => p.id === panel.id)!.artwork.mode = 'none'));
+        else if (value === 'template:support' || value === 'template:minimal') {
+          await save(ctx, (d) => {
+            const artwork = d.tickets.panels.find((p) => p.id === panel.id)!.artwork;
+            artwork.mode = 'template';
+            artwork.template = value === 'template:minimal' ? 'minimal' : 'support';
+          });
+        }
+        return manage(panel.id);
+      }
       case 'route-reset':
         if (panel) await save(ctx, (d) => {
           const p = d.tickets.panels.find((item) => item.id === panel.id)!;
@@ -200,7 +236,7 @@ export const ticketsPage: SettingsPage = {
           return 'done';
         }
         const id = newPanelId();
-        await save(ctx, (d) => d.tickets.panels.push({ id, title, description, questions: [{ id: newQuestionId(), label: 'How can we help?', description: '', placeholder: '', style: 'paragraph', required: true, minLength: 0, maxLength: 1000 }], parentId: null, logChannelId: null, staffRoleIds: null }));
+        await save(ctx, (d) => d.tickets.panels.push({ id, title, description, questions: [{ id: newQuestionId(), label: 'How can we help?', description: '', placeholder: '', style: 'paragraph', required: true, minLength: 0, maxLength: 1000 }], parentId: null, logChannelId: null, staffRoleIds: null, artwork: { mode: 'template', template: 'support' } }));
         return manage(id);
       }
       case 'panel-edit':
@@ -306,7 +342,7 @@ export const ticketsPage: SettingsPage = {
       }
       case 'preview':
         if (panel) {
-          await interaction.reply(await ticketPanelPayload(ctx.guild.settings, panel, true));
+          await interaction.reply(await ticketPanelPayload(ctx.guild.settings, panel, true, interaction.guildId));
           return 'done';
         }
         return manage();

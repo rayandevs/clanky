@@ -2,6 +2,22 @@
 
 All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with release channels (`-beta.N`).
 
+## [Unreleased]
+
+## [0.1.0-beta.9] — 2026-10-16
+
+### Added
+- Optional ticket-panel artwork: choose a built-in template, no image, or upload custom art from the dashboard
+- Searchable dashboard transcripts for newly closed tickets, including saved intake answers, messages, embeds, and attachment bytes archived for the selected retention period
+- Attachment archive limits: 25 MiB per file, 100 MiB total, and 500 files per ticket
+- Per-server transcript retention controls (30, 90, 180, 365 days, or indefinitely), with access for Manage Server users and configured ticket staff
+
+### Changed
+- Ticket openings now use one information-rich image inside one container for the opener, category, and claim status
+
+### Fixed
+- Tickets stay open if transcript messages or attachment archives cannot be saved, avoiding incomplete dashboard transcripts
+
 ## [0.1.0-beta.8] — 2026-10-16
 
 ### Added

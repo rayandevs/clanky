@@ -11,7 +11,10 @@ export interface TicketRecord {
   ticketId: number;
   channelId: string;
   openerId: string;
+  openerDisplayName?: string;
+  openerAvatarUrl?: string;
   category: string | null;
+  categoryLabel?: string | null;
   topic: string;
   panelId?: string;
   panelTitle?: string;
@@ -21,6 +24,7 @@ export interface TicketRecord {
   logChannelId?: string | null;
   status: 'open' | 'closed';
   claimedBy: string | null;
+  claimedByName?: string | null;
   closedBy: string | null;
   closeReason: string | null;
   closedAt: Date | null;
@@ -34,7 +38,10 @@ const ticketSchema = new Schema<TicketRecord>(
     ticketId: { type: Number, required: true },
     channelId: { type: String, required: true, index: true },
     openerId: { type: String, required: true },
+    openerDisplayName: { type: String, default: null },
+    openerAvatarUrl: { type: String, default: null },
     category: { type: String, default: null },
+    categoryLabel: { type: String, default: null },
     topic: { type: String, default: '' },
     panelId: { type: String, default: 'general' },
     panelTitle: { type: String, default: 'Need help?' },
@@ -46,6 +53,7 @@ const ticketSchema = new Schema<TicketRecord>(
     logChannelId: { type: String, default: null },
     status: { type: String, enum: ['open', 'closed'], default: 'open' },
     claimedBy: { type: String, default: null },
+    claimedByName: { type: String, default: null },
     closedBy: { type: String, default: null },
     closeReason: { type: String, default: null },
     closedAt: { type: Date, default: null },
