@@ -11,6 +11,12 @@ import { ago, cn } from '@/lib/utils';
 
 type Props = { guildId: string };
 
+function transcriptRouteParams(location: string): URLSearchParams {
+  const routeQuery = location.includes('?') ? location.slice(location.indexOf('?') + 1) : '';
+  const hashQuery = window.location.hash.includes('?') ? window.location.hash.slice(window.location.hash.indexOf('?') + 1) : '';
+  return new URLSearchParams(routeQuery || window.location.search.slice(1) || hashQuery);
+}
+
 function formatDate(value: string): string {
   return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
@@ -22,17 +28,24 @@ function errorMessage(error: unknown): string {
 
 export default function TicketTranscripts({ guildId }: Props) {
   const [location, navigate] = useLocation();
-  const routeQuery = new URLSearchParams(location.split('?')[1] ?? '');
-  const selectedTicketId = Number(routeQuery.get('ticketId')) || null;
-  const detailPage = Math.max(0, Number(routeQuery.get('messagePage')) || 0);
-  const [searchInput, setSearchInput] = useState(routeQuery.get('q') ?? '');
-  const [search, setSearch] = useState(routeQuery.get('q') ?? '');
+  const initialRoute = transcriptRouteParams(location);
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(() => Number(initialRoute.get('ticketId')) || null);
+  const [detailPage, setDetailPage] = useState(() => Math.max(0, Number(initialRoute.get('messagePage')) || 0));
+  const [searchInput, setSearchInput] = useState(initialRoute.get('q') ?? '');
+  const [search, setSearch] = useState(initialRoute.get('q') ?? '');
   const [listPage, setListPage] = useState(0);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.split('?')[1] ?? '');
-    setSearchInput(params.get('q') ?? '');
-    setSearch(params.get('q') ?? '');
+    const syncRouteState = () => {
+      const params = transcriptRouteParams(location);
+      setSelectedTicketId(Number(params.get('ticketId')) || null);
+      setDetailPage(Math.max(0, Number(params.get('messagePage')) || 0));
+      setSearchInput(params.get('q') ?? '');
+      setSearch(params.get('q') ?? '');
+    };
+    syncRouteState();
+    window.addEventListener('popstate', syncRouteState);
+    return () => window.removeEventListener('popstate', syncRouteState);
   }, [location]);
 
   const listParams = new URLSearchParams({ page: String(listPage) });
@@ -48,6 +61,8 @@ export default function TicketTranscripts({ guildId }: Props) {
   });
 
   const setTranscriptRoute = (ticketId: number | null, messagePage = 0) => {
+    setSelectedTicketId(ticketId);
+    setDetailPage(Math.max(0, messagePage));
     const params = new URLSearchParams();
     if (ticketId) params.set('ticketId', String(ticketId));
     if (ticketId && search) params.set('q', search);
