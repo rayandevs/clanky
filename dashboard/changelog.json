@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-alpha.6",
+    "date": "2026-10-17",
+    "title": "Ideas that move",
+    "highlights": [
+      "Search and filter the suggestion queue, inspect vote trends, and manage reviewer notes and decision history",
+      "Reviewers can recover suggestions that Discord could not post",
+      "Configure categories, submission limits, cooldowns, anonymity and reviewer digests"
+    ]
+  },
+  {
     "version": "0.1.0-alpha.5",
     "date": "2026-10-16",
     "title": "Clearer legal docs",

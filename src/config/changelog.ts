@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.12',
+    date: '2026-10-17',
+    title: 'Ideas that move 💡',
+    highlights: [
+      'Review suggestions in Discord or a searchable dashboard queue with status history and reviewer notes',
+      'Organize submissions with categories, optional anonymity, per-member limits and cooldowns',
+      'Keep authors updated, send optional reviewer digests, and recover suggestions when Discord posting fails',
+    ],
+  },
+  {
     version: '0.1.0-beta.11',
     date: '2026-10-16',
     title: 'Clearer dashboard legal docs 📜',

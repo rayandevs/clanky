@@ -3,7 +3,7 @@
  * Discord or MongoDB. Used only by `npm run build:demo`.
  */
 import { ApiError } from './api';
-import type { Channel, GuildListItem, GuildSettings, Me, Meta, Overview, Release, Role, RuleKind, SalvagePlayer, SectionId, SettingsPayload, TicketTranscriptDetailResponse, TicketTranscriptListResponse } from './types';
+import type { Channel, GuildListItem, GuildSettings, Me, Meta, Overview, Release, Role, RuleKind, SalvagePlayer, SectionId, SettingsPayload, SuggestionQueueResponse, SuggestionStatus, TicketTranscriptDetailResponse, TicketTranscriptListResponse } from './types';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const id = (n: number) => `13${String(n).padStart(16, '0')}`;
@@ -13,6 +13,17 @@ const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString
 let loggedIn = true;
 const postedTicketPanels = new Map<string, NonNullable<SettingsPayload['postedTicketPanels']>>();
 const demoSeasons = new Map<string, Array<{ seasonId: string; name: string; active: boolean; startedAt: string; endedAt: string | null; rewardRoleId: string | null; rewardTopCount: number }>>();
+const demoSuggestions = new Map<string, SuggestionQueueResponse['entries']>();
+
+function suggestionsFor(guildId: string) {
+  if (!demoSuggestions.has(guildId)) demoSuggestions.set(guildId, [
+    { suggestionId: 17, title: 'Add a channel for Salvage trades', content: 'People keep posting their shinies in general. A trade channel would keep things tidy.', category: 'Community', authorId: people[4]!.id, author: people[4]!, anonymous: false, status: 'pending', upvotes: [people[0]!.id, people[1]!.id, people[2]!.id], downvotes: [people[3]!.id], channelId: id(23), messageId: id(170), createdAt: hoursAgo(32), updatedAt: hoursAgo(32), reviewerId: null, reviewer: null, reviewNote: null, reviewHistory: [], postStatus: 'posted', postError: null },
+    { suggestionId: 16, title: 'Monthly community game night', content: 'A relaxed game night would help new members meet people outside of general chat.', category: 'Events', authorId: people[3]!.id, author: people[3]!, anonymous: true, status: 'under_review', upvotes: [people[0]!.id, people[1]!.id, people[2]!.id, people[4]!.id], downvotes: [], channelId: id(23), messageId: id(160), createdAt: hoursAgo(78), updatedAt: hoursAgo(20), reviewerId: people[1]!.id, reviewer: people[1]!, reviewNote: 'Checking moderator availability and a good time slot.', reviewHistory: [{ status: 'under_review', note: 'Checking moderator availability and a good time slot.', reviewerId: people[1]!.id, reviewer: people[1]!, changedAt: hoursAgo(20) }], postStatus: 'posted', postError: null },
+    { suggestionId: 15, title: 'Create a new-member guide', content: 'Collect links to the rules, roles and common questions in one pinned guide.', category: 'Features', authorId: people[2]!.id, author: people[2]!, anonymous: false, status: 'planned', upvotes: [people[0]!.id, people[1]!.id], downvotes: [], channelId: id(23), messageId: id(150), createdAt: hoursAgo(24 * 8), updatedAt: hoursAgo(24 * 2), reviewerId: people[0]!.id, reviewer: people[0]!, reviewNote: 'We will draft this after the next moderation update.', reviewHistory: [{ status: 'planned', note: 'We will draft this after the next moderation update.', reviewerId: people[0]!.id, reviewer: people[0]!, changedAt: hoursAgo(24 * 2) }], postStatus: 'posted', postError: null },
+    { suggestionId: 14, title: 'Increase the size of the role menu', content: 'It would be easier to find the right role if the menu showed more context.', category: null, authorId: people[5]!.id, author: people[5]!, anonymous: false, status: 'pending', upvotes: [], downvotes: [], channelId: id(23), messageId: null, createdAt: hoursAgo(2), updatedAt: hoursAgo(2), reviewerId: null, reviewer: null, reviewNote: null, reviewHistory: [], postStatus: 'failed', postError: 'Missing permission to send messages in #suggestions.' },
+  ]);
+  return demoSuggestions.get(guildId)!;
+}
 
 function seasonsFor(guildId: string) {
   if (!demoSeasons.has(guildId)) demoSeasons.set(guildId, [
@@ -38,8 +49,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.10', label: 'v0.1.0 Beta 10', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-alpha.4', label: 'v0.1.0 Alpha 4', codename: 'Scrapyard' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.12', label: 'v0.1.0 Beta 12', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-alpha.6', label: 'v0.1.0 Alpha 6', codename: 'Scrapyard' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -108,7 +119,7 @@ const defaults = (): GuildSettings => ({
       { id: 'report', label: 'Report a member', description: 'Something broke the rules' },
     ],
   },
-  suggestions: { enabled: true, channelId: id(23), reviewerRoleIds: [id(52)], anonymous: false, createThreads: true },
+  suggestions: { enabled: true, channelId: id(23), reviewerRoleIds: [id(52)], anonymous: false, allowAnonymousChoice: true, createThreads: true, categories: ['Community', 'Events', 'Features'], maxOpenPerUser: 3, cooldownSeconds: 60, digestIntervalHours: 24, digestChannelId: id(23) },
   leveling: {
     enabled: true, announce: 'current', announceChannelId: null, message: 'GG {user}, you reached **level {level}**! ⭐', xpMin: 15, xpMax: 25, cooldownSeconds: 60,
     curvePreset: 'classic', minMessageLength: 0, ignoredChannelIds: [id(24)], channelMultipliers: [{ channelId: id(22), multiplier: 1.5 }], roleMultipliers: [{ roleId: id(56), multiplier: 1.25 }],
@@ -188,6 +199,8 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.12', date: '2026-10-17', title: 'Ideas that move 💡', highlights: ['Review suggestions in Discord or a searchable dashboard queue with status history and notes', 'Organize submissions with categories, anonymity choices, limits and cooldowns', 'Author updates, reviewer digests and recovery for failed Discord posts'] },
+    { version: '0.1.0-beta.11', date: '2026-10-16', title: 'Clearer dashboard legal docs 📜', highlights: ['Read Clanky’s Privacy Policy and Terms of Service on public dashboard pages', 'Both policies explain self-hosted operation, data handling, retention and deletion scope'] },
     { version: '0.1.0-beta.10', date: '2026-10-16', title: 'A more personal leveling system ⭐', highlights: ['Choose a progression pace without resetting existing levels', 'Track every human message and view leveling activity', 'Customize rank cards and compete in seasons'] },
     { version: '0.1.0-beta.9', date: '2026-10-16', title: 'A clearer ticket desk 🎫', highlights: ['Choose custom, built-in, or no panel artwork', 'Read searchable ticket transcripts with archived attachments retained for the configured period', 'Keep tickets open if transcript messages or attachments cannot be safely archived'] },
     { version: '0.1.0-beta.8', date: '2026-10-16', title: 'A better ticket desk 🎫', highlights: ['Configure up to three ticket panels with custom intake forms and routing', 'A redesigned dashboard editor with previews and tracked panel updates', 'Canvas artwork on support panels and newly opened tickets'] },
@@ -197,6 +210,8 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-alpha.6', date: '2026-10-17', title: 'Ideas that move', highlights: ['Search, filter and review suggestions from the dashboard', 'Inspect status history and vote trends, and recover failed Discord posts', 'Configure categories, limits, cooldowns, anonymity and reviewer digests'] },
+    { version: '0.1.0-alpha.5', date: '2026-10-16', title: 'Clearer legal docs', highlights: ["Read Clanky's Privacy Policy and Terms of Service on public dashboard pages", 'Find both documents from footer links, with a shared layout matching the dashboard', 'Policies explain self-hosted operation, data handling, retention and deletion scope'] },
     { version: '0.1.0-alpha.4', date: '2026-10-16', title: 'A more personal leveling system', highlights: ['Tune progression and XP rules', 'Review messages, XP, and active-member analytics', 'Run manual seasons and preview reward changes'] },
     { version: '0.1.0-alpha.3', date: '2026-10-16', title: 'A clearer ticket desk', highlights: ['Browse closed ticket transcripts with role-checked access for server administrators and ticket staff', 'Attachment files are archived and retained with each transcript instead of relying only on expiring Discord links', 'Choose panel artwork, transcript retention, and custom dashboard uploads in ticket settings'] },
     { version: '0.1.0-alpha.2', date: '2026-10-16', title: 'A better ticket desk', highlights: ['A panel-first ticket editor for up to three support entry points', 'Custom questions, topic options, and per-panel routing in one focused workspace', 'Live Discord preview and save-aware publish/update controls'] },
@@ -237,6 +252,44 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
       }
       (s as unknown as Record<string, unknown>)[section] = { ...(s[section] as object), ...(body as object), ...(section === 'automod' ? { rules: s.automod.rules } : {}) };
       return ok({ settings: s });
+    }
+    if (c === 'suggestions' && !d && method === 'GET') {
+      const params = new URLSearchParams(path.split('?')[1] ?? '');
+      const filter = params.get('status') ?? 'all';
+      const q = (params.get('q') ?? '').toLowerCase();
+      const sort = params.get('sort') ?? 'newest';
+      const page = Math.max(0, Number(params.get('page')) || 0);
+      const all = suggestionsFor(b);
+      const entries = all.filter((item) => (filter === 'all' || (filter === 'failed' ? item.postStatus === 'failed' : item.status === filter)) && (!q || String(item.suggestionId).includes(q.replace(/^#/, '')) || `${item.title} ${item.content} ${item.category ?? ''}`.toLowerCase().includes(q)));
+      entries.sort((x, y) => sort === 'oldest' ? x.createdAt.localeCompare(y.createdAt) : sort === 'votes' ? (y.upvotes.length + y.downvotes.length) - (x.upvotes.length + x.downvotes.length) : y.createdAt.localeCompare(x.createdAt));
+      const statuses: SuggestionStatus[] = ['pending', 'under_review', 'planned', 'in_progress', 'approved', 'denied', 'implemented'];
+      const byStatus = Object.fromEntries(statuses.map((status) => [status, all.filter((item) => item.status === status).length])) as SuggestionQueueResponse['stats']['byStatus'];
+      const pending = all.filter((item) => item.status === 'pending');
+      const result: SuggestionQueueResponse = {
+        total: entries.length, page, pages: Math.max(1, Math.ceil(entries.length / 20)), entries: entries.slice(page * 20, (page + 1) * 20),
+        stats: { byStatus, failedPosts: all.filter((item) => item.postStatus === 'failed').length, oldestPendingAt: pending.length ? pending.map((item) => item.createdAt).sort()[0]! : null, topSupported: all.filter((item) => ['pending', 'under_review', 'planned', 'in_progress'].includes(item.status)).map((item) => ({ suggestionId: item.suggestionId, title: item.title, votes: item.upvotes.length + item.downvotes.length })).sort((x, y) => y.votes - x.votes).slice(0, 3) },
+      };
+      return ok(result);
+    }
+    if (c === 'suggestions' && d && e === 'review' && method === 'POST') {
+      const entry = suggestionsFor(b).find((item) => item.suggestionId === Number(d));
+      if (!entry) throw new ApiError(404, 'That suggestion no longer exists.', 'not_found');
+      const change = body as { status: SuggestionStatus; note: string };
+      entry.status = change.status;
+      entry.reviewNote = change.note || null;
+      entry.reviewerId = people[1]!.id;
+      entry.reviewer = people[1]!;
+      entry.updatedAt = new Date().toISOString();
+      entry.reviewHistory.push({ status: entry.status, note: entry.reviewNote, reviewerId: people[1]!.id, reviewer: people[1]!, changedAt: entry.updatedAt });
+      return ok({ ok: true, postSynced: true });
+    }
+    if (c === 'suggestions' && d && e === 'retry' && method === 'POST') {
+      const entry = suggestionsFor(b).find((item) => item.suggestionId === Number(d));
+      if (!entry) throw new ApiError(404, 'That suggestion no longer exists.', 'not_found');
+      entry.postStatus = 'posted';
+      entry.postError = null;
+      entry.messageId = id(140 + entry.suggestionId);
+      return ok({ ok: true, result: 'posted' });
     }
     if (c === 'leveling' && d === 'analytics' && method === 'GET') {
       const params = new URLSearchParams(path.split('?')[1] ?? '');

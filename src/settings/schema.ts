@@ -130,8 +130,19 @@ export const SuggestionSettings = z.object({
   enabled: z.boolean().default(false),
   channelId: channel,
   reviewerRoleIds: roles(10),
+  /** Legacy/server-wide anonymity remains supported. */
   anonymous: z.boolean().default(false),
+  allowAnonymousChoice: z.boolean().default(false),
   createThreads: z.boolean().default(true),
+  categories: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
+  maxOpenPerUser: z.number().int().min(0).max(20).default(3),
+  cooldownSeconds: z.number().int().min(0).max(604800).default(60),
+  digestIntervalHours: z.union([z.literal(0), z.literal(24), z.literal(168)]).default(0),
+  digestChannelId: channel,
+}).superRefine((settings, ctx) => {
+  if (new Set(settings.categories.map((item) => item.toLowerCase())).size !== settings.categories.length) {
+    ctx.addIssue({ code: 'custom', path: ['categories'], message: 'Suggestion categories must be unique.' });
+  }
 });
 
 export const LevelReward = z.object({

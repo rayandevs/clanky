@@ -164,8 +164,8 @@ const CHAPTERS: Chapter[] = [
     emoji: '💡',
     label: 'Suggestions',
     title: 'Let the server vote on ideas.',
-    body: 'Members post ideas, everyone votes with buttons, and reviewers approve or deny them. Each idea gets its own thread to talk it over.',
-    points: ['One vote per member', 'Anonymous mode', 'Discussion threads'],
+    body: 'Members submit categorized ideas and vote in Discord. Reviewers manage a searchable queue in the dashboard, track decisions over time, and keep authors updated.',
+    points: ['Review history, notes and progress statuses', 'Submission limits, cooldowns and optional anonymity', 'Reviewer digests and recovery for failed posts'],
     channel: 'suggestions',
     mock: (
       <Message command="/suggest" user="Ollie">
@@ -173,7 +173,7 @@ const CHAPTERS: Chapter[] = [
           <Title>💡 Suggestion #17</Title>
           <Text>{'**Add a channel for Salvage trades**\nPeople keep posting their shinies in general. A trade channel would keep things tidy.'}</Text>
           <Separator />
-          <Text small>Pending review · 27 votes</Text>
+          <Text small>Planned · 27 votes · Category: Community</Text>
           <Row>
             <DButton emoji="👍" style="success">24</DButton>
             <DButton emoji="👎">3</DButton>

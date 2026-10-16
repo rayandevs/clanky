@@ -79,7 +79,19 @@ export interface GuildSettings {
     categories: Array<{ id: string; label: string; description: string }>;
     panels: TicketPanel[];
   };
-  suggestions: { enabled: boolean; channelId: string | null; reviewerRoleIds: string[]; anonymous: boolean; createThreads: boolean };
+  suggestions: {
+    enabled: boolean;
+    channelId: string | null;
+    reviewerRoleIds: string[];
+    anonymous: boolean;
+    allowAnonymousChoice: boolean;
+    createThreads: boolean;
+    categories: string[];
+    maxOpenPerUser: number;
+    cooldownSeconds: number;
+    digestIntervalHours: 0 | 24 | 168;
+    digestChannelId: string | null;
+  };
   leveling: {
     enabled: boolean;
     announce: 'off' | 'current' | 'channel';
@@ -211,6 +223,42 @@ export interface TicketTranscriptDetailResponse {
   messagePage: number;
   messagePages: number;
   messages: TicketTranscriptMessage[];
+}
+
+export type SuggestionStatus = 'pending' | 'under_review' | 'planned' | 'in_progress' | 'approved' | 'denied' | 'implemented';
+export interface SuggestionQueueEntry {
+  suggestionId: number;
+  title: string;
+  content: string;
+  category: string | null;
+  authorId: string;
+  author: UserSummary;
+  anonymous: boolean;
+  status: SuggestionStatus;
+  upvotes: string[];
+  downvotes: string[];
+  channelId: string;
+  messageId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  reviewerId: string | null;
+  reviewer: UserSummary | null;
+  reviewNote: string | null;
+  reviewHistory: Array<{ status: SuggestionStatus; note: string | null; reviewerId: string; reviewer: UserSummary; changedAt: string }>;
+  postStatus: 'queued' | 'posting' | 'posted' | 'failed';
+  postError: string | null;
+}
+export interface SuggestionQueueResponse {
+  total: number;
+  page: number;
+  pages: number;
+  entries: SuggestionQueueEntry[];
+  stats: {
+    byStatus: Record<SuggestionStatus, number>;
+    failedPosts: number;
+    oldestPendingAt: string | null;
+    topSupported: Array<{ suggestionId: number; title: string; votes: number }>;
+  };
 }
 
 export interface SalvagePlayer {

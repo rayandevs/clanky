@@ -4,6 +4,14 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.12] — 2026-10-17
+
+### Added
+- Searchable dashboard suggestions queue with status filters, vote sorting, workload stats, review notes and history
+- Suggestion categories, submitter-selected anonymity, per-member open limits and cooldowns
+- Intermediate review states, author notifications, optional daily/weekly reviewer digests, and retryable failed Discord posts
+- Shared review and post-rendering logic across bot and dashboard, preserving existing suggestion records
+
 ## [0.1.0-beta.10] — 2026-10-16
 
 ### Added

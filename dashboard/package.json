@@ -1,6 +1,6 @@
 {
   "name": "clanky-dashboard",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "private": true,
   "type": "module",
   "description": "Clanky's web dashboard. Served by the bot process.",

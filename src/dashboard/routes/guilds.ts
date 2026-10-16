@@ -4,12 +4,14 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Clanky } from '../../client/Clanky.js';
 import { createLogger } from '../../core/logger.js';
-import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketModel, TicketPanelArtworkModel, TicketTranscriptMessageModel, TicketTranscriptModel, type TicketTranscriptRecord } from '../../database/models/index.js';
+import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketModel, TicketPanelArtworkModel, TicketTranscriptMessageModel, TicketTranscriptModel, type SuggestionRecord, type SuggestionStatus, type TicketTranscriptRecord } from '../../database/models/index.js';
 import { canManageAutomod, deleteRule, RULE_KINDS, ruleStates, syncAllRules, upsertRule, type RuleKind } from '../../modules/automod/service.js';
 import { listTicketPanelMessages, publishTicketPanel } from '../../modules/tickets/panels.js';
 import { MAX_TRANSCRIPT_ATTACHMENT_BYTES, readArchivedTranscriptAttachment } from '../../modules/tickets/attachmentArchive.js';
 import { guilds, levels, salvage } from '../../services/index.js';
 import { desiredRewardRoleIds } from '../../modules/leveling/handler.js';
+import { SuggestionActionError, publishSuggestion, reviewSuggestion, SUGGESTION_STATUS_KEYS, syncSuggestionPost } from '../../modules/suggestions/service.js';
+import { isSuggestionAnonymous } from '../../modules/suggestions/privacy.js';
 import { MODULES } from '../../settings/registry.js';
 import { GuildSettingsSchema, type GuildSettings, type SettingsSection } from '../../settings/schema.js';
 import { canManage, inviteUrl, managedGuild } from '../access.js';
@@ -245,6 +247,113 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
       await syncAllRules(guild, await guilds.settings(guild.id));
     }
     return { settings: await guilds.settings(guild.id) };
+  });
+
+  app.get('/api/guilds/:guildId/suggestions', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const query = z.object({ page: z.coerce.number().int().min(0).max(10_000).default(0), q: z.string().trim().max(80).default(''), status: z.string().default('all'), sort: z.enum(['newest', 'oldest', 'votes']).default('newest') }).safeParse(request.query);
+    if (!query.success) return reply.code(400).send({ error: 'invalid', message: 'Invalid suggestion queue filters.' });
+    const statuses = SUGGESTION_STATUS_KEYS;
+    const { page, q, status: statusFilter, sort } = query.data;
+    if (statusFilter !== 'all' && statusFilter !== 'failed' && !statuses.includes(statusFilter as SuggestionStatus)) return reply.code(400).send({ error: 'invalid', message: 'Unknown suggestion status.' });
+    const terms: object[] = [];
+    if (statusFilter === 'failed') terms.push({ $or: [{ postStatus: 'failed' }, { postStatus: { $exists: false }, messageId: null }] });
+    else if (statusFilter !== 'all') terms.push({ status: statusFilter });
+    if (q) {
+      const numericId = /^#?\d+$/.test(q) ? Number(q.replace(/^#/, '')) : null;
+      terms.push(numericId !== null ? { suggestionId: numericId } : { $or: ['title', 'content', 'category'].map((key) => ({ [key]: { $regex: escapeRegex(q), $options: 'i' } })) });
+    }
+    const filter = { guildId: access.guild.id, ...(terms.length ? { $and: terms } : {}) };
+    const [total, rows, statusRows, failedPosts, oldest, topSupported] = await Promise.all([
+      SuggestionModel.countDocuments(filter),
+      sort === 'votes'
+        ? SuggestionModel.aggregate([{ $match: filter }, { $addFields: { voteCount: { $add: [{ $size: { $ifNull: ['$upvotes', []] } }, { $size: { $ifNull: ['$downvotes', []] } }] } } }, { $sort: { voteCount: -1, createdAt: -1 } }, { $skip: page * 20 }, { $limit: 20 }]).exec()
+        : SuggestionModel.find(filter).sort({ createdAt: sort === 'oldest' ? 1 : -1, suggestionId: sort === 'oldest' ? 1 : -1 }).skip(page * 20).limit(20).lean(),
+      SuggestionModel.aggregate([{ $match: { guildId: access.guild.id } }, { $group: { _id: '$status', count: { $sum: 1 } } }]).exec(),
+      SuggestionModel.countDocuments({ guildId: access.guild.id, $or: [{ postStatus: 'failed' }, { postStatus: { $exists: false }, messageId: null }] }),
+      SuggestionModel.findOne({ guildId: access.guild.id, status: 'pending', $or: [{ postStatus: 'posted' }, { postStatus: { $exists: false }, messageId: { $ne: null } }] }).sort({ createdAt: 1 }).select({ createdAt: 1 }).lean<{ createdAt: Date }>(),
+      SuggestionModel.aggregate([{ $match: { guildId: access.guild.id, status: { $in: ['pending', 'under_review', 'planned', 'in_progress'] }, $or: [{ postStatus: 'posted' }, { postStatus: { $exists: false }, messageId: { $ne: null } }] } }, { $addFields: { voteCount: { $add: [{ $size: { $ifNull: ['$upvotes', []] } }, { $size: { $ifNull: ['$downvotes', []] } }] } } }, { $sort: { voteCount: -1, createdAt: -1 } }, { $limit: 3 }, { $project: { _id: 0, suggestionId: 1, title: 1, votes: '$voteCount' } }]).exec(),
+    ]);
+    const byStatus = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<SuggestionStatus, number>;
+    for (const item of statusRows as Array<{ _id: SuggestionStatus; count: number }>) if (item._id in byStatus) byStatus[item._id] = item.count;
+    const userCache = new Map<string, ReturnType<typeof userSummary>>();
+    const summary = (id: string) => {
+      let value = userCache.get(id);
+      if (!value) { value = userSummary(client, id); userCache.set(id, value); }
+      return value;
+    };
+    const entries = await Promise.all((rows as unknown as Array<SuggestionRecord & { voteCount?: number }>).map(async (item) => {
+      const history = (item.reviewHistory ?? []).slice(-10);
+      return {
+        suggestionId: item.suggestionId,
+        title: item.title,
+        content: item.content,
+        category: item.category ?? null,
+        authorId: item.authorId,
+        author: await summary(item.authorId),
+        anonymous: isSuggestionAnonymous(item.anonymous),
+        status: item.status as SuggestionStatus,
+        upvotes: item.upvotes ?? [],
+        downvotes: item.downvotes ?? [],
+        channelId: item.channelId,
+        messageId: item.messageId ?? null,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        reviewerId: item.reviewerId ?? null,
+        reviewer: item.reviewerId ? await summary(item.reviewerId) : null,
+        reviewNote: item.reviewNote ?? null,
+        reviewHistory: await Promise.all(history.map(async (event: { status: SuggestionStatus; note: string | null; reviewerId: string; changedAt: Date }) => ({ ...event, reviewer: await summary(event.reviewerId) }))),
+        postStatus: item.postStatus ?? (item.messageId ? 'posted' : 'failed'),
+        postError: item.postError ?? null,
+      };
+    }));
+    return {
+      total,
+      page,
+      pages: Math.max(1, Math.ceil(total / 20)),
+      entries,
+      stats: { byStatus, failedPosts, oldestPendingAt: oldest?.createdAt ?? null, topSupported },
+    };
+  });
+
+  app.post('/api/guilds/:guildId/suggestions/:suggestionId/review', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { suggestionId: rawId } = request.params as { suggestionId: string };
+    const suggestionId = Number(rawId);
+    if (!Number.isSafeInteger(suggestionId) || suggestionId < 1) return reply.code(400).send({ error: 'invalid', message: 'Invalid suggestion number.' });
+    const parsed = z.object({ status: z.enum(['pending', 'under_review', 'planned', 'in_progress', 'approved', 'denied', 'implemented']), note: z.string().trim().max(500).default('') }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid', message: 'Choose a valid status and a note under 500 characters.' });
+    try {
+      const result = await reviewSuggestion(client, access.guild.id, suggestionId, access.member.id, parsed.data.status, parsed.data.note || null, await guilds.settings(access.guild.id));
+      return { ok: true, postSynced: result.postSynced };
+    } catch (error) {
+      if (error instanceof SuggestionActionError) return reply.code(error.code === 'not_found' ? 404 : error.code === 'conflict' ? 409 : 400).send({ error: error.code, message: error.message });
+      throw error;
+    }
+  });
+
+  app.post('/api/guilds/:guildId/suggestions/:suggestionId/retry', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const { suggestionId: rawId } = request.params as { suggestionId: string };
+    const suggestionId = Number(rawId);
+    if (!Number.isSafeInteger(suggestionId) || suggestionId < 1) return reply.code(400).send({ error: 'invalid', message: 'Invalid suggestion number.' });
+    const current = await SuggestionModel.findOne({ guildId: access.guild.id, suggestionId }).lean<SuggestionRecord>();
+    if (!current) return reply.code(404).send({ error: 'not_found', message: 'That suggestion no longer exists.' });
+    const settings = await guilds.settings(access.guild.id);
+    if (current.messageId && current.postStatus === 'posted') {
+      const synced = await syncSuggestionPost(client, current, settings).catch(() => false);
+      if (synced) return { ok: true, result: 'refreshed' };
+      await SuggestionModel.updateOne({ guildId: access.guild.id, suggestionId }, { $set: { postStatus: 'failed', postError: 'The previous Discord message is missing. Repost it here.' } });
+    }
+    try {
+      await publishSuggestion(client, access.guild.id, suggestionId);
+      return { ok: true, result: 'posted' };
+    } catch (error) {
+      return reply.code(502).send({ error: 'discord', message: error instanceof Error ? error.message : "Couldn't post the suggestion to Discord." });
+    }
   });
 
   app.get('/api/guilds/:guildId/leveling/analytics', async (request, reply) => {

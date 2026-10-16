@@ -4,6 +4,13 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-alpha.6 · Scrapyard · 2026-10-17
+
+- Search and filter the suggestions queue, inspect review workload and vote trends, and save decisions with notes
+- Browse reviewer history and send meaningful status updates to suggestion authors
+- Retry suggestions that failed to publish to Discord
+- Configure categories, anonymity, per-member open limits, cooldowns, and daily or weekly reviewer digests
+
 ## 0.1.0-alpha.5 · Scrapyard · 2026-10-16
 
 - Added public Privacy Policy and Terms of Service pages with a shared, dashboard-matched legal layout

@@ -6,7 +6,7 @@ import { Container, DButton, DiscordWindow, Message, Row, Text, Title } from '@/
 import { BrandSpinner, ModuleSwitch, Panel, SaveBar, settingsKey, useDraft, useGuildSettings } from '@/components/dash';
 import { ChannelPicker, MultiChannelPicker, RolePicker, SingleRolePicker } from '@/components/pickers';
 import { useToast } from '@/components/Toast';
-import { Button, Emoji, Field, Input, Segmented, Slider, Switch } from '@/components/ui';
+import { Button, Emoji, Field, Input, Segmented, Slider, Switch, Textarea } from '@/components/ui';
 import { api, ApiError, queryClient } from '@/lib/api';
 import { useMeta } from '@/lib/hooks';
 import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKind, type SectionId, type SettingsPayload } from '@/lib/types';
@@ -14,6 +14,7 @@ import { cn, hex, MODULE_EMOJI } from '@/lib/utils';
 import { MessagePreview, OffNotice, SectionHeader, TemplateInput, WordList } from './shared';
 import TicketsSettings from './TicketsSettings';
 import LevelingTools from './LevelingTools';
+import SuggestionsQueue from './SuggestionsQueue';
 
 type Props = { guildId: string; data: SettingsPayload };
 
@@ -313,7 +314,7 @@ function Suggestions({ guildId, data }: Props) {
   const v = d.draft;
   return (
     <>
-      <SectionHeader emoji="💡" title="Suggestions" description="Members share ideas and vote on them." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
+      <SectionHeader emoji="💡" title="Suggestions" description="Collect ideas, moderate them from Discord or this dashboard, and keep members informed." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
       <OffNotice show={!v.enabled}>
         <Panel title="Setup">
           <Field label="Suggestions channel" description="Where /suggest posts new ideas.">
@@ -322,15 +323,36 @@ function Suggestions({ guildId, data }: Props) {
           <Field label="Reviewer roles" description="Can approve, deny or mark ideas as done.">
             <RolePicker value={v.reviewerRoleIds} onChange={(x) => d.set('reviewerRoleIds', x)} roles={data.resources.roles} max={10} testId="picker-reviewers" />
           </Field>
-          <Field inline label="Anonymous" description="Hide who posted each idea.">
-            <Switch checked={v.anonymous} onChange={(x) => d.set('anonymous', x)} label="Anonymous" />
+          <Field inline label="Always anonymous" description="Hide submitter names from public suggestion posts. Reviewers can still see authors in the dashboard.">
+            <Switch checked={v.anonymous} onChange={(x) => d.set('anonymous', x)} label="Always anonymous" />
+          </Field>
+          <Field inline label="Let members choose anonymity" description="Adds an optional anonymous choice to /suggest when always-anonymous is off.">
+            <Switch checked={v.allowAnonymousChoice} onChange={(x) => d.set('allowAnonymousChoice', x)} label="Allow anonymous choice" />
           </Field>
           <Field inline label="Discussion threads" description="Open a thread under each idea.">
             <Switch checked={v.createThreads} onChange={(x) => d.set('createThreads', x)} label="Threads" />
           </Field>
+          <Field label="Categories" description="Optional categories members can choose from when submitting. One per line, up to 10.">
+            <Textarea value={v.categories.join('\n')} maxLength={500} onChange={(e) => d.set('categories', [...new Set(e.target.value.split('\n').map((item) => item.trim()).filter(Boolean))].slice(0, 10))} data-testid="input-suggestion-categories" />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Open suggestions per member" description="0 disables the limit.">
+              <Input type="number" min={0} max={20} value={v.maxOpenPerUser} onChange={(e) => d.set('maxOpenPerUser', Number(e.target.value))} data-testid="input-suggestion-open-limit" />
+            </Field>
+            <Field label="Member cooldown (seconds)" description="0 disables the cooldown.">
+              <Input type="number" min={0} max={604800} value={v.cooldownSeconds} onChange={(e) => d.set('cooldownSeconds', Number(e.target.value))} data-testid="input-suggestion-cooldown" />
+            </Field>
+          </div>
+          <Field label="Reviewer digest" description="A summary of pending ideas; 0 disables it. The first digest is sent when pending ideas exist.">
+            <Segmented value={String(v.digestIntervalHours)} options={[{ value: '0', label: 'Off' }, { value: '24', label: 'Daily' }, { value: '168', label: 'Weekly' }]} onChange={(x) => d.set('digestIntervalHours', Number(x) as 0 | 24 | 168)} testId="segmented-suggestion-digest" />
+          </Field>
+          <Field label="Digest channel" description="Leave empty to send digests to the suggestions channel.">
+            <ChannelPicker value={v.digestChannelId} onChange={(x) => d.set('digestChannelId', x)} channels={data.resources.channels} testId="picker-suggestion-digest" />
+          </Field>
         </Panel>
       </OffNotice>
       <SaveBar dirty={d.dirty} saving={d.saving} onSave={() => d.save()} onReset={d.reset} />
+      <SuggestionsQueue guildId={guildId} />
     </>
   );
 }

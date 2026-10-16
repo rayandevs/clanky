@@ -13,7 +13,7 @@ export interface GuildRecord {
   /** Validated by `GuildSettingsSchema` (see settings/schema.ts). */
   settings: GuildSettings;
   counters: { cases: number; tickets: number; suggestions: number };
-  meta: { lastAnnouncedVersion: string | null; locale: string };
+  meta: { lastAnnouncedVersion: string | null; locale: string; suggestionsDigestAt: Date | null };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +36,7 @@ const guildSchema = new Schema<GuildRecord>(
     meta: {
       lastAnnouncedVersion: { type: String, default: null },
       locale: { type: String, default: 'en-US' },
+      suggestionsDigestAt: { type: Date, default: null },
     },
   },
   { timestamps: true, minimize: false },
