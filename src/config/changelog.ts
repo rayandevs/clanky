@@ -11,6 +11,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.13',
+    date: '2026-10-18',
+    title: 'Clearer suggestion cards 💡',
+    highlights: [
+      'Suggestion posts now give the idea, status, category, and author details more room to breathe',
+      'Simplified vote controls show each count once, without the redundant progress bar and percentage',
+    ],
+  },
+  {
     version: '0.1.0-beta.12',
     date: '2026-10-17',
     title: 'Ideas that move 💡',

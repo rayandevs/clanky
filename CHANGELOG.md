@@ -4,6 +4,12 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.13] — 2026-10-18
+
+### Changed
+- Simplified suggestion posts: clearer spacing and labels for idea details, status, category, author, and vote actions
+- Removed the redundant progress bar, percentage, reviewer ID, and duplicate vote totals
+
 ## [0.1.0-beta.12] — 2026-10-17
 
 ### Added

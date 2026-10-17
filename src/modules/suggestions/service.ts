@@ -8,7 +8,7 @@ import { GuildModel, SuggestionModel, type SuggestionRecord, type SuggestionStat
 import { guilds } from '../../services/index.js';
 import type { GuildSettings } from '../../settings/schema.js';
 import { isSuggestionAnonymous } from './privacy.js';
-import { button, divider, panel, progressBar, row, text, truncate, v2 } from '../../ui/components.js';
+import { button, divider, panel, row, text, truncate, v2 } from '../../ui/components.js';
 import { emoji, type EmojiKey } from '../../ui/emoji.js';
 import { colors } from '../../ui/theme.js';
 
@@ -32,33 +32,32 @@ const isPosted = (record: SuggestionRecord) => Boolean(record.messageId) && (!re
 export function renderSuggestion(s: SuggestionRecord, settings: GuildSettings) {
   const up = s.upvotes.length;
   const down = s.downvotes.length;
-  const total = up + down;
-  const percent = total ? Math.round((up / total) * 100) : 0;
   const status = SUGGESTION_STATUSES[s.status];
   const anonymous = isSuggestionAnonymous(s.anonymous);
-  const author = anonymous ? 'Anonymous' : `<@${s.authorId}>`;
   const container = panel({
     title: `Suggestion #${s.suggestionId}`,
     emoji: 'suggestion',
-    description: `**${s.title}**${s.category ? ` · ${s.category}` : ''}\n${s.content}`,
+    description: `**${s.title}**\n${s.content}`,
     accent: status.color ?? settings.general.accentColor,
   })
     .addSeparatorComponents(divider())
     .addTextDisplayComponents(
       text(
         [
-          `${emoji('upvote')} **${up}** · ${emoji('downvote')} **${down}**  ${progressBar(up, total, 10)} ${total ? `${percent}%` : ''}`,
-          `${emoji(status.emoji)} **${status.label}**${s.reviewerId ? ` by <@${s.reviewerId}>` : ''}`,
-          s.reviewNote ? `> ${truncate(s.reviewNote, 300)}` : null,
-          `-# By ${author} · ${timestamp(s.createdAt, 'R')}`,
-        ].filter(Boolean).join('\n'),
+          `${emoji(status.emoji)} **${status.label}**`,
+          [
+            s.category ? `**Category** · ${s.category}` : null,
+            s.reviewNote ? `**Reviewer note**\n> ${truncate(s.reviewNote, 300)}` : null,
+          ].filter(Boolean).join('\n'),
+          `-# ${anonymous ? 'Submitted anonymously' : `Suggested by <@${s.authorId}>`} · ${timestamp(s.createdAt, 'R')}`,
+        ].filter(Boolean).join('\n\n'),
       ),
     );
   const closed = !OPEN_SUGGESTION_STATUSES.includes(s.status);
   container.addActionRowComponents(
     row(
-      button({ id: cid('sg', 'up', s.suggestionId), label: String(up), emoji: 'upvote', style: ButtonStyle.Success, disabled: closed }),
-      button({ id: cid('sg', 'down', s.suggestionId), label: String(down), emoji: 'downvote', style: ButtonStyle.Danger, disabled: closed }),
+      button({ id: cid('sg', 'up', s.suggestionId), label: `Upvote · ${up}`, emoji: 'upvote', style: ButtonStyle.Success, disabled: closed }),
+      button({ id: cid('sg', 'down', s.suggestionId), label: `Downvote · ${down}`, emoji: 'downvote', style: ButtonStyle.Danger, disabled: closed }),
       button({ id: cid('sg', 'review', s.suggestionId), label: 'Review', emoji: 'shield' }),
     ),
   );
