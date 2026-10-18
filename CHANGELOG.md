@@ -4,6 +4,13 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.16] — 2026-10-19
+
+### Fixed
+- Reduced dashboard scroll jank by replacing animated full-screen effects with a static background, lighter glass blur and compositor-friendly route transitions
+- Added a visible React error fallback and guarded recovery reload for stale JavaScript chunks; HTML is revalidated while fingerprinted assets use immutable caching
+- Debounced suggestion searches and welcome-card previews; sliders now persist once per committed adjustment rather than on every movement
+
 ## [0.1.0-beta.15] — 2026-10-18
 
 ### Fixed

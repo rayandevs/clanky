@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ExternalLink, RefreshCw, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EmptyState, Panel } from '@/components/dash';
 import { Button, Input, Badge } from '@/components/ui';
 import { useToast } from '@/components/Toast';
@@ -23,11 +23,16 @@ const statusName = (status: SuggestionStatus) => STATUS[status].label;
 export default function SuggestionsQueue({ guildId }: { guildId: string }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState<'newest' | 'oldest' | 'votes'>('newest');
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [draftStatus, setDraftStatus] = useState<Record<number, SuggestionStatus>>({});
   const [draftNotes, setDraftNotes] = useState<Record<number, string>>({});
   const toast = useToast();
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
   const params = new URLSearchParams({ page: String(page), sort });
   if (statusFilter !== 'all') params.set('status', statusFilter);
   if (search.trim()) params.set('q', search.trim());
@@ -75,7 +80,7 @@ export default function SuggestionsQueue({ guildId }: { guildId: string }) {
         <div className="flex flex-col gap-2 py-3 md:flex-row">
           <label className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" />
-            <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} placeholder="Search title, description, category or #ID" className="pl-9" data-testid="input-suggestion-search" />
+            <Input value={searchInput} onChange={(e) => { setSearchInput(e.target.value); setPage(0); }} placeholder="Search title, description, category or #ID" className="pl-9" data-testid="input-suggestion-search" />
           </label>
           <select aria-label="Filter suggestions by status" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }} className="h-10 rounded-xl border border-line bg-black/25 px-3 text-[14px] text-text">
             <option value="all">All statuses</option><option value="failed">Posting failed</option>

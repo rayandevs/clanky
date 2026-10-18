@@ -44,6 +44,10 @@ export async function createDashboard(client: Clanky): Promise<FastifyInstance> 
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     reply.header('X-Frame-Options', 'SAMEORIGIN');
+    const contentType = reply.getHeader('content-type');
+    if (String(contentType ?? '').toLowerCase().startsWith('text/html')) {
+      reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
     return payload;
   });
 
@@ -65,7 +69,15 @@ export async function createDashboard(client: Clanky): Promise<FastifyInstance> 
   await app.register(async (scope) => guildRoutes(scope, client));
 
   if (existsSync(DIST)) {
-    await app.register(fastifyStatic, { root: DIST, wildcard: false, maxAge: isDev ? 0 : '1h' });
+    await app.register(fastifyStatic, {
+      root: DIST,
+      wildcard: false,
+      maxAge: isDev ? 0 : '1y',
+      setHeaders: (response, filePath) => {
+        const fingerprinted = /-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$/.test(filePath);
+        response.header('Cache-Control', !isDev && fingerprinted ? 'public, max-age=31536000, immutable' : 'no-cache');
+      },
+    });
     // Single page app: every non-API route serves index.html.
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith('/api/')) return reply.code(404).send({ error: 'not_found' });

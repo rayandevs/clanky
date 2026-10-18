@@ -1,7 +1,7 @@
 import { Slider as SliderPrimitive, Switch as SwitchPrimitive, Tooltip as TooltipPrimitive } from 'radix-ui';
 import { Loader2 } from 'lucide-react';
 import { animate, motion, useInView } from 'motion/react';
-import { forwardRef, useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { cn, twemoji } from '@/lib/utils';
 
 /* ───────────────────────── Button ───────────────────────── */
@@ -118,16 +118,40 @@ export function Textarea({ className, maxLength, value, ...props }: TextareaHTML
 }
 
 export function Slider({ value, onChange, min, max, step = 1, suffix = '', testId }: { value: number; onChange: (v: number) => void; min: number; max: number; step?: number; suffix?: string; testId?: string }) {
+  const [displayValue, setDisplayValue] = useState(value);
+  const commitTimer = useRef<number | null>(null);
+  const pendingValue = useRef<number | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => setDisplayValue(value), [value]);
+  useEffect(() => () => {
+    if (commitTimer.current !== null) {
+      window.clearTimeout(commitTimer.current);
+      if (pendingValue.current !== null) onChangeRef.current(pendingValue.current);
+    }
+  }, []);
+
+  const commit = (nextValue: number) => {
+    pendingValue.current = nextValue;
+    if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
+    commitTimer.current = window.setTimeout(() => {
+      commitTimer.current = null;
+      pendingValue.current = null;
+      onChangeRef.current(nextValue);
+    }, 160);
+  };
+
   return (
     <div className="flex items-center gap-4">
-      <SliderPrimitive.Root value={[value]} onValueChange={([v]) => onChange(v!)} min={min} max={max} step={step} className="relative flex h-6 w-full touch-none select-none items-center" data-testid={testId}>
+      <SliderPrimitive.Root value={[displayValue]} onValueChange={([v]) => setDisplayValue(v!)} onValueCommit={([v]) => commit(v!)} min={min} max={max} step={step} className="relative flex h-6 w-full touch-none select-none items-center" data-testid={testId}>
         <SliderPrimitive.Track className="relative h-1.5 grow overflow-hidden rounded-full bg-white/[0.08] shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)]">
           <SliderPrimitive.Range className="absolute h-full rounded-full bg-[linear-gradient(90deg,#c2571d,#f08a44)]" />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb aria-label="Value" className="block size-5 rounded-full border border-white/40 bg-[linear-gradient(180deg,#fff,#e8ded6)] shadow-[0_2px_10px_rgb(0_0_0/0.5),0_0_0_4px_rgb(226_112_47/0.2)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rust-500/40" />
       </SliderPrimitive.Root>
       <span className="w-16 shrink-0 rounded-lg border border-line bg-black/25 py-1 text-center font-mono text-[13px] font-bold tabular-nums">
-        {value}
+        {displayValue}
         {suffix}
       </span>
     </div>

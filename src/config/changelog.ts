@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.16',
+    date: '2026-10-19',
+    title: 'A smoother, steadier dashboard',
+    highlights: [
+      'Reduced scroll jank by replacing animated full-screen effects with a static background and lighter glass surfaces',
+      'Recover from stale dashboard chunks automatically, with a visible error screen if a reload cannot help',
+      'Debounced suggestion searches, settings sliders, and welcome-card previews to avoid unnecessary work',
+    ],
+  },
+  {
     version: '0.1.0-beta.15',
     date: '2026-10-18',
     title: 'Welcome cards, in sync 👋',

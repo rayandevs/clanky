@@ -4,6 +4,12 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-alpha.9 · Scrapyard · 2026-10-19
+
+- Replaced scroll-linked background effects with a static glow, reduced backdrop blur, and changed route transitions to avoid expensive filters
+- Added a branded lazy-route fallback, a top-level render error screen, and a guarded recovery reload for stale JavaScript chunks
+- Revalidate HTML/SPA responses while keeping fingerprinted assets immutable; debounce search, slider persistence, and Canvas previews
+
 ## 0.1.0-alpha.8 · Scrapyard · 2026-10-18
 
 - Welcome card previews now show the exact Canvas image produced by the bot, updating as event settings change

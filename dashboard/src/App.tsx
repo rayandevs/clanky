@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Route, Router, Switch, useLocation } from 'wouter';
 import { useHashLocation } from 'wouter/use-hash-location';
 import { Background } from './components/Background';
+import { LogoMark } from './components/Logo';
 import { Footer } from './components/Footer';
 import { Nav } from './components/Nav';
 import { ToastProvider } from './components/Toast';
@@ -20,6 +21,17 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
+function RouteLoading() {
+  return (
+    <div role="status" aria-live="polite" className="grid min-h-[100dvh] place-items-center px-5 py-20">
+      <div className="glass glass-strong flex items-center gap-3 rounded-2xl px-5 py-4 text-sm text-muted">
+        <LogoMark className="size-7 animate-pulse" />
+        <span>Loading dashboard…</span>
+      </div>
+    </div>
+  );
+}
+
 function Routes() {
   const [location] = useLocation();
   const area = location.startsWith('/dashboard/') ? location.split('/').slice(0, 3).join('/') : location;
@@ -28,13 +40,13 @@ function Routes() {
     <AnimatePresence mode="wait" initial={false}>
       <motion.main
         key={area}
-        initial={{ opacity: 0, filter: 'blur(8px)' }}
-        animate={{ opacity: 1, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, filter: 'blur(6px)' }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         className="min-h-[100dvh]"
       >
-        <Suspense fallback={<div className="min-h-[100dvh]" />}>
+        <Suspense fallback={<RouteLoading />}>
           <Switch location={location}>
             <Route path="/" component={Home} />
             <Route path="/dashboard" component={Servers} />

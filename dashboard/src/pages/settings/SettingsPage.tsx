@@ -307,7 +307,7 @@ function WelcomeEventEditor({ event, settings, joinChannelId, channels, accent, 
     '{count}': '1,285',
   });
   const imagePreviewMessage = settings.format === 'image_only' ? previewText.replaceAll('@Juno', 'Juno') : '';
-  const previewKey = JSON.stringify({ settings, imagePreviewMessage, artworkVersion });
+  const previewKey = JSON.stringify({ format: settings.format, artwork: settings.artwork, imagePreviewMessage, accent, customArtworkUrl, artworkVersion });
   const customArtwork = settings.artwork.background === 'custom';
 
   useEffect(() => () => {
@@ -344,7 +344,7 @@ function WelcomeEventEditor({ event, settings, joinChannelId, channels, accent, 
         .catch(() => {
           if (!controller.signal.aborted) releasePreview();
         });
-    }, 180);
+    }, 450);
     return () => {
       cancelled = true;
       controller.abort();
