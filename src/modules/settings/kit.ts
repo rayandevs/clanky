@@ -40,7 +40,7 @@ export type SettingsCtx = GuildContext<SettingsInteraction>;
  * "done"   → the handler already replied.
  * { warn } → re-draw, then show a short warning.
  */
-export type HandleResult = 'render' | 'done' | { warn: string } | { state: string[] };
+export type HandleResult = 'render' | 'done' | { warn: string; state?: string[] } | { state: string[] };
 
 export interface SettingsPage {
   id: PageId;

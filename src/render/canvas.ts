@@ -70,6 +70,37 @@ export function fitText(ctx: SKRSContext2D, text: string, maxWidth: number): str
   return `${out}…`;
 }
 
+/** Wraps text to a bounded number of lines, clipping the last line with an ellipsis. */
+export function wrapText(ctx: SKRSContext2D, value: string, maxWidth: number, maxLines: number): string[] {
+  const words = value.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = '';
+  let clipped = false;
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      line = candidate;
+      continue;
+    }
+    if (line) lines.push(fitText(ctx, line, maxWidth));
+    line = word;
+    if (lines.length >= maxLines) {
+      clipped = true;
+      break;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(fitText(ctx, line, maxWidth));
+  if (clipped) {
+    const last = lines.length - 1;
+    if (last >= 0) {
+      let text = lines[last]!;
+      while (text && ctx.measureText(`${text}…`).width > maxWidth) text = text.slice(0, -1);
+      lines[last] = `${text}…`;
+    }
+  }
+  return lines;
+}
+
 /** Draws an image clipped to a circle. Falls back to a plain circle. */
 export function circleImage(ctx: SKRSContext2D, image: Image | null, cx: number, cy: number, radius: number): void {
   ctx.save();

@@ -37,14 +37,36 @@ export const LoggingSettings = z.object({
   ignoredChannelIds: roles(25),
 });
 
-export const WelcomeSettings = z.object({
-  enabled: z.boolean().default(false),
+export const WelcomeArtworkSettings = z.object({
+  template: z.enum(['celebration', 'minimal', 'soft']).default('celebration'),
+  background: z.enum(['preset', 'custom']).default('preset'),
+  showAvatar: z.boolean().default(true),
+  showMemberCount: z.boolean().default(true),
+  showServerName: z.boolean().default(true),
+});
+
+export const WelcomeEventSettings = z.object({
   channelId: channel,
   message: z.string().min(1).max(1000).default('Welcome to **{server}**, {user}! You are member **#{count}** 🎉'),
+  format: z.enum(['container', 'text', 'text_image', 'image_only']).default('container'),
+  pingUser: z.boolean().default(true),
+  includeBots: z.boolean().default(true),
+  artwork: WelcomeArtworkSettings.prefault({}),
+});
+
+export const WelcomeSettings = z.object({
+  enabled: z.boolean().default(false),
+  join: WelcomeEventSettings.prefault({
+    message: 'Welcome to **{server}**, {user}! You are member **#{count}** 🎉',
+  }),
   leaveEnabled: z.boolean().default(false),
-  leaveMessage: z.string().min(1).max(1000).default('**{username}** left the server. 👋'),
+  leave: WelcomeEventSettings.prefault({
+    message: '**{username}** left the server. 👋',
+    pingUser: false,
+    artwork: { showAvatar: true },
+  }),
   autoRoleIds: roles(5),
-  showAvatar: z.boolean().default(true),
+  waitForScreening: z.boolean().default(false),
 });
 
 export const TicketCategory = z.object({
@@ -222,25 +244,42 @@ export type SettingsSection = keyof GuildSettings;
 /** Parses stored settings, falling back to defaults for any broken section. */
 export function parseGuildSettings(input: unknown): GuildSettings {
   const source = (input ?? {}) as Record<string, unknown>;
-  const rawTickets = source.tickets && typeof source.tickets === 'object' ? (source.tickets as Record<string, unknown>) : {};
-  const migrated: Record<string, unknown> = Array.isArray(rawTickets.panels)
-    ? source
-    : {
-        ...source,
-        tickets: {
-          ...rawTickets,
-          panels: [
-            {
-              ...DEFAULT_TICKET_PANEL,
-              title: typeof rawTickets.panelTitle === 'string' && rawTickets.panelTitle.trim() ? rawTickets.panelTitle : DEFAULT_TICKET_PANEL.title,
-              description:
-                typeof rawTickets.panelDescription === 'string' && rawTickets.panelDescription.trim()
-                  ? rawTickets.panelDescription
-                  : DEFAULT_TICKET_PANEL.description,
-            },
-          ],
+  const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const rawTickets = asRecord(source.tickets);
+  const rawWelcome = asRecord(source.welcome);
+  const hasLegacyWelcome = ['channelId', 'message', 'leaveMessage', 'showAvatar'].some((key) => key in rawWelcome);
+  const legacyJoin = {
+    channelId: rawWelcome.channelId,
+    message: rawWelcome.message,
+    artwork: { showAvatar: rawWelcome.showAvatar },
+  };
+  const legacyLeave = {
+    channelId: null,
+    message: rawWelcome.leaveMessage,
+    pingUser: true,
+    artwork: { showAvatar: rawWelcome.showAvatar ?? true },
+  };
+  const migrated: Record<string, unknown> = {
+    ...source,
+    welcome: {
+      ...rawWelcome,
+      join: rawWelcome.join ?? (hasLegacyWelcome ? legacyJoin : undefined),
+      leave: rawWelcome.leave ?? (hasLegacyWelcome ? legacyLeave : undefined),
+    },
+    tickets: Array.isArray(rawTickets.panels) ? rawTickets : {
+      ...rawTickets,
+      panels: [
+        {
+          ...DEFAULT_TICKET_PANEL,
+          title: typeof rawTickets.panelTitle === 'string' && rawTickets.panelTitle.trim() ? rawTickets.panelTitle : DEFAULT_TICKET_PANEL.title,
+          description:
+            typeof rawTickets.panelDescription === 'string' && rawTickets.panelDescription.trim()
+              ? rawTickets.panelDescription
+              : DEFAULT_TICKET_PANEL.description,
         },
-      };
+      ],
+    },
+  };
   const result = GuildSettingsSchema.safeParse(migrated);
   if (result.success) return result.data;
 

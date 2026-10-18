@@ -4,6 +4,12 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-alpha.7 · Scrapyard · 2026-10-18
+
+- Split Welcome administration into Join and Leave tabs with independent channels, formats, templates, custom backgrounds, and live previews
+- Configure member mentions, bot handling, avatars, server names, member counts, and screening-delayed greetings
+- Upload and preview normalized event-specific background artwork from the dashboard
+
 ## 0.1.0-alpha.6 · Scrapyard · 2026-10-17
 
 - Search and filter the suggestions queue, inspect review workload and vote trends, and save decisions with notes

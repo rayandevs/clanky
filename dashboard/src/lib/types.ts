@@ -64,11 +64,29 @@ export interface Overview {
 export const LOG_EVENTS = ['messageDelete', 'messageEdit', 'memberJoin', 'memberLeave', 'memberRoles', 'nickname'] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
+export type WelcomeEvent = 'join' | 'leave';
+export type WelcomeFormat = 'container' | 'text' | 'text_image' | 'image_only';
+export interface WelcomeArtwork {
+  template: 'celebration' | 'minimal' | 'soft';
+  background: 'preset' | 'custom';
+  showAvatar: boolean;
+  showMemberCount: boolean;
+  showServerName: boolean;
+}
+export interface WelcomeEventSettings {
+  channelId: string | null;
+  message: string;
+  format: WelcomeFormat;
+  pingUser: boolean;
+  includeBots: boolean;
+  artwork: WelcomeArtwork;
+}
+
 export interface GuildSettings {
   general: { accentColor: number; updatesChannelId: string | null };
   moderation: { enabled: boolean; logChannelId: string | null; reportsChannelId: string | null; dmOnAction: boolean; requireReason: boolean };
   logging: { enabled: boolean; channelId: string | null; events: LogEvent[]; ignoredChannelIds: string[] };
-  welcome: { enabled: boolean; channelId: string | null; message: string; leaveEnabled: boolean; leaveMessage: string; autoRoleIds: string[]; showAvatar: boolean };
+  welcome: { enabled: boolean; join: WelcomeEventSettings; leaveEnabled: boolean; leave: WelcomeEventSettings; autoRoleIds: string[]; waitForScreening: boolean };
   tickets: {
     enabled: boolean;
     parentId: string | null;

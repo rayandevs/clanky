@@ -1,16 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
-import { Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Trash2, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Container, DButton, DiscordWindow, Message, Row, Text, Title } from '@/components/discord';
 import { BrandSpinner, ModuleSwitch, Panel, SaveBar, settingsKey, useDraft, useGuildSettings } from '@/components/dash';
 import { ChannelPicker, MultiChannelPicker, RolePicker, SingleRolePicker } from '@/components/pickers';
 import { useToast } from '@/components/Toast';
 import { Button, Emoji, Field, Input, Segmented, Slider, Switch, Textarea } from '@/components/ui';
-import { api, ApiError, queryClient } from '@/lib/api';
+import { api, ApiError, queryClient, uploadWelcomeArtwork, welcomeArtworkUrl } from '@/lib/api';
 import { useMeta } from '@/lib/hooks';
-import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKind, type SectionId, type SettingsPayload } from '@/lib/types';
-import { cn, hex, MODULE_EMOJI } from '@/lib/utils';
+import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKind, type SectionId, type SettingsPayload, type WelcomeEvent, type WelcomeEventSettings } from '@/lib/types';
+import { cn, DEMO, hex, MODULE_EMOJI } from '@/lib/utils';
 import { MessagePreview, OffNotice, SectionHeader, TemplateInput, WordList } from './shared';
 import TicketsSettings from './TicketsSettings';
 import LevelingTools from './LevelingTools';
@@ -254,52 +254,244 @@ function Logging({ guildId, data }: Props) {
 /* ───────────────────────── Welcome ───────────────────────── */
 
 const WELCOME_TOKENS = [
-  { key: '{user}', label: 'mention' },
-  { key: '{username}', label: 'name' },
+  { key: '{user}', label: 'member mention' },
+  { key: '{username}', label: 'username' },
+  { key: '{displayname}', label: 'server display name' },
   { key: '{server}', label: 'server' },
   { key: '{count}', label: 'member count' },
 ];
+const LEAVE_TOKENS = WELCOME_TOKENS;
+const WELCOME_FORMATS: Array<{ value: WelcomeEventSettings['format']; label: string }> = [
+  { value: 'container', label: 'Container message' },
+  { value: 'text', label: 'Plain text' },
+  { value: 'text_image', label: 'Message + image' },
+  { value: 'image_only', label: 'Image only' },
+];
+const FORMAT_DESCRIPTION: Record<WelcomeEventSettings['format'], string> = {
+  container: 'Posts your message in a Clanky container with the server accent.',
+  text: 'Posts only the message text, with no Clanky container or card.',
+  text_image: 'Posts the message alongside a generated welcome card.',
+  image_only: 'Posts only the generated card, with your message rendered into the image.',
+};
+const usesWelcomeArtwork = (format: WelcomeEventSettings['format']) => format === 'text_image' || format === 'image_only';
+
+type WelcomeEventEditorProps = {
+  event: WelcomeEvent;
+  settings: WelcomeEventSettings;
+  joinChannelId: string | null;
+  channels: SettingsPayload['resources']['channels'];
+  accent: string;
+  guildId: string;
+  artworkUrl?: string;
+  artworkVersion?: number;
+  hasSavedCustomArtwork: boolean;
+  uploading: boolean;
+  onChange: (patch: Partial<WelcomeEventSettings>) => void;
+  onUploadArtwork: (file: File) => Promise<void>;
+};
+
+function WelcomeEventEditor({ event, settings, joinChannelId, channels, accent, guildId, artworkUrl, artworkVersion, hasSavedCustomArtwork, uploading, onChange, onUploadArtwork }: WelcomeEventEditorProps) {
+  const isJoin = event === 'join';
+  const selectedChannelId = isJoin || settings.channelId !== null ? settings.channelId : joinChannelId;
+  const channel = channels.find((item) => item.id === selectedChannelId)?.name ?? (isJoin ? 'welcome' : 'join channel');
+  const overrideChannelId = joinChannelId ?? channels.find((item) => item.canSend)?.id ?? null;
+  const customArtworkUrl = artworkUrl ?? (settings.artwork.background === 'custom' && hasSavedCustomArtwork && !DEMO ? welcomeArtworkUrl(guildId, event, artworkVersion) : undefined);
+  const updateArtwork = (patch: Partial<WelcomeEventSettings['artwork']>) => onChange({ artwork: { ...settings.artwork, ...patch } });
+  const previewText = fill(settings.message, {
+    '{user}': settings.pingUser ? '@Juno' : 'Juno',
+    '{username}': 'juno',
+    '{displayname}': 'Juno',
+    '{server}': 'your server',
+    '{count}': '1,285',
+  });
+  const customArtwork = settings.artwork.background === 'custom';
+
+  return (
+    <>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
+        <Panel title={`${isJoin ? 'Join' : 'Leave'} message`} description={isJoin ? 'Choose where to greet new members and how the welcome should look.' : 'Set the farewell content and where it should be posted.'}>
+          {isJoin ? (
+            <Field label="Channel" description="Where Clanky sends join messages.">
+              <ChannelPicker value={settings.channelId} onChange={(channelId) => onChange({ channelId })} channels={channels} placeholder="Choose a channel" testId="picker-welcome" />
+            </Field>
+          ) : (
+            <Field label="Channel" description={settings.channelId === null ? 'Using the join channel by default.' : 'This override is used only for leave messages.'}>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant={settings.channelId === null ? 'primary' : 'outline'} onClick={() => onChange({ channelId: null })} data-testid="button-leave-use-join-channel">Use join channel</Button>
+                  <Button size="sm" variant={settings.channelId !== null ? 'primary' : 'outline'} disabled={!overrideChannelId} onClick={() => onChange({ channelId: overrideChannelId })} data-testid="button-leave-override-channel">Use another channel</Button>
+                </div>
+                {settings.channelId !== null && <ChannelPicker value={settings.channelId} onChange={(channelId) => onChange({ channelId })} channels={channels} placeholder="Choose a leave channel" testId="picker-leave" />}
+              </div>
+            </Field>
+          )}
+          <Field label="Format" description={FORMAT_DESCRIPTION[settings.format]}>
+            <Segmented value={settings.format} options={WELCOME_FORMATS} onChange={(format) => onChange({ format })} testId={`segment-welcome-format-${event}`} />
+          </Field>
+          <Field label="Message" description={settings.format === 'image_only' ? 'Your message is included on the card; keep it short so it fits.' : 'Use placeholders to personalize every message.'}>
+            <TemplateInput value={settings.message} onChange={(message) => onChange({ message })} placeholders={isJoin ? WELCOME_TOKENS : LEAVE_TOKENS} maxLength={1000} testId={isJoin ? 'input-welcome-message' : 'input-leave-message'} />
+          </Field>
+          <Field inline label={isJoin ? 'Mention the new member' : 'Mention the departing member'} description={isJoin ? 'Control whether {user} receives a Discord notification.' : 'A mention can remain visible in server logs, but the member has left the server.'}>
+            <Switch checked={settings.pingUser} onChange={(pingUser) => onChange({ pingUser })} label={isJoin ? 'Mention the new member' : 'Mention the departing member'} testId={`switch-welcome-ping-${event}`} />
+          </Field>
+          <Field inline label="Include bot members" description="Send this event when a bot account joins or leaves too.">
+            <Switch checked={settings.includeBots} onChange={(includeBots) => onChange({ includeBots })} label="Include bot members" testId={`switch-welcome-bots-${event}`} />
+          </Field>
+        </Panel>
+        <MessagePreview text={previewText} channel={channel} accent={accent} avatar={settings.artwork.showAvatar} format={settings.format} artwork={settings.artwork} artworkUrl={customArtworkUrl} event={event} />
+      </div>
+      {usesWelcomeArtwork(settings.format) && (
+        <Panel title={`${isJoin ? 'Join' : 'Leave'} card artwork`} description="Generated cards can use a built-in look or a server-specific background.">
+          <Field label="Card template" description="Choose the layout used for the generated member card.">
+            <Segmented value={settings.artwork.template} options={[{ value: 'celebration', label: 'Celebration' }, { value: 'minimal', label: 'Minimal' }, { value: 'soft', label: 'Soft' }]} onChange={(template) => updateArtwork({ template })} testId={`segment-welcome-template-${event}`} />
+          </Field>
+          <Field label="Background" description="Preset backgrounds are generated by Clanky. Custom backgrounds are uploaded immediately.">
+            <Segmented value={settings.artwork.background} options={[{ value: 'preset', label: 'Preset' }, { value: 'custom', label: 'Custom upload' }]} onChange={(background) => updateArtwork({ background })} testId={`segment-welcome-background-${event}`} />
+          </Field>
+          {customArtwork && (
+            <div className="my-4 rounded-2xl border border-line bg-black/15 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[13px] font-semibold">Custom card background</p>
+                  <p className="mt-1 text-[11px] text-faint">PNG, JPEG, or WebP · up to 4 MiB · normalized to PNG</p>
+                </div>
+                <label className={cn('inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-line px-3 text-[12px] font-semibold transition-colors hover:bg-white/[0.04]', uploading && 'pointer-events-none opacity-50')}>
+                  <Upload className="size-3.5" /> {uploading ? 'Uploading…' : 'Choose image'}
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={uploading}
+                    onChange={(input) => {
+                      const file = input.currentTarget.files?.[0];
+                      input.currentTarget.value = '';
+                      if (file) void onUploadArtwork(file);
+                    }}
+                    data-testid={`input-welcome-artwork-${event}`}
+                  />
+                </label>
+              </div>
+              {!customArtworkUrl && <p className="mt-3 rounded-xl border border-dashed border-line px-3 py-2 text-[12px] text-faint">Choose an image to preview your custom background.</p>}
+            </div>
+          )}
+          <div className="grid gap-x-5 md:grid-cols-3">
+            <Field inline label="Show member avatar" description="Adds the member’s avatar to the card.">
+              <Switch checked={settings.artwork.showAvatar} onChange={(showAvatar) => updateArtwork({ showAvatar })} label="Show member avatar" testId={`switch-welcome-avatar-${event}`} />
+            </Field>
+            <Field inline label="Show member count" description="Displays the current member count.">
+              <Switch checked={settings.artwork.showMemberCount} onChange={(showMemberCount) => updateArtwork({ showMemberCount })} label="Show member count" testId={`switch-welcome-member-count-${event}`} />
+            </Field>
+            <Field inline label="Show server name" description="Displays your server name on the card.">
+              <Switch checked={settings.artwork.showServerName} onChange={(showServerName) => updateArtwork({ showServerName })} label="Show server name" testId={`switch-welcome-server-name-${event}`} />
+            </Field>
+          </div>
+        </Panel>
+      )}
+    </>
+  );
+}
 
 function Welcome({ guildId, data }: Props) {
   const d = useDraft(guildId, 'welcome', data.settings.welcome);
+  const toast = useToast();
   const accent = useAccent(data);
+  const [tab, setTab] = useState<WelcomeEvent>('join');
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const [uploadingArtwork, setUploadingArtwork] = useState<WelcomeEvent | null>(null);
+  const [artworkUrls, setArtworkUrls] = useState<Partial<Record<WelcomeEvent, string>>>({});
+  const [artworkVersion, setArtworkVersion] = useState<Partial<Record<WelcomeEvent, number>>>({});
+  const objectUrls = useRef(new Set<string>());
+  useEffect(() => () => objectUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
   if (!d.draft) return null;
   const v = d.draft;
-  const sample = { '{user}': '@Juno', '{username}': 'juno', '{server}': 'your server', '{count}': '1,285' };
-  const channel = data.resources.channels.find((c) => c.id === v.channelId)?.name ?? 'welcome';
+  const updateEvent = (event: WelcomeEvent, patch: Partial<WelcomeEventSettings>) => d.set(event, { ...v[event], ...patch });
+  const errors = [
+    ...(v.enabled && !v.join.channelId ? ['Choose a join channel before saving.'] : []),
+    ...(v.leaveEnabled && !v.leave.channelId && !v.join.channelId ? ['Choose a join channel or a leave-channel override before enabling leave messages.'] : []),
+    ...(['join', 'leave'] as const)
+      .filter((event) => usesWelcomeArtwork(v[event].format) && v[event].artwork.background === 'custom' && data.settings.welcome[event].artwork.background !== 'custom' && !artworkVersion[event])
+      .map((event) => `Upload a custom ${event} card background before saving.`),
+    ...(uploadingArtwork ? ['Wait for the artwork upload to finish before saving.'] : []),
+  ];
+  const uploadArtwork = async (event: WelcomeEvent, file: File) => {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024) {
+      toast('Choose a PNG, JPEG, or WebP image under 4 MiB.', 'bad');
+      return;
+    }
+    const previousUrl = artworkUrls[event];
+    const localUrl = URL.createObjectURL(file);
+    objectUrls.current.add(localUrl);
+    setArtworkUrls((current) => ({ ...current, [event]: localUrl }));
+    setUploadingArtwork(event);
+    try {
+      await uploadWelcomeArtwork(guildId, event, file);
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+        objectUrls.current.delete(previousUrl);
+      }
+      setArtworkVersion((current) => ({ ...current, [event]: Date.now() }));
+      updateEvent(event, { artwork: { ...v[event].artwork, background: 'custom' } });
+      toast('Welcome card image uploaded. Save settings to use it.');
+    } catch (error) {
+      URL.revokeObjectURL(localUrl);
+      objectUrls.current.delete(localUrl);
+      setArtworkUrls((current) => {
+        const next = { ...current };
+        if (previousUrl) next[event] = previousUrl;
+        else delete next[event];
+        return next;
+      });
+      toast(error instanceof ApiError ? error.message : 'Could not upload that image.', 'bad');
+    } finally {
+      setUploadingArtwork(null);
+    }
+  };
+  const save = () => {
+    setSaveAttempted(true);
+    if (errors.length) return;
+    d.save();
+  };
+  const reset = () => {
+    d.reset();
+    setSaveAttempted(false);
+  };
+
   return (
     <>
-      <SectionHeader emoji="👋" title="Welcome" description="Greet new members and give them roles." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
+      <SectionHeader emoji="👋" title="Welcome" description="Greet new members, say goodbye when they leave, and give them roles." enabled={v.enabled} onToggle={(enabled) => d.set('enabled', enabled)} />
+      {(d.error || (saveAttempted && errors.length > 0)) && <div role="alert" className="rounded-2xl border border-bad/25 bg-bad/5 px-4 py-3 text-[13px] text-bad">{d.error ?? errors[0]}</div>}
       <OffNotice show={!v.enabled}>
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
-          <Panel title="Welcome message">
-            <Field label="Channel">
-              <ChannelPicker value={v.channelId} onChange={(x) => d.set('channelId', x)} channels={data.resources.channels} testId="picker-welcome" />
-            </Field>
-            <Field label="Message">
-              <TemplateInput value={v.message} onChange={(x) => d.set('message', x)} placeholders={WELCOME_TOKENS} maxLength={1000} testId="input-welcome-message" />
-            </Field>
-            <Field inline label="Show their avatar" description="Adds the new member's picture next to the message.">
-              <Switch checked={v.showAvatar} onChange={(x) => d.set('showAvatar', x)} label="Show avatar" />
-            </Field>
-          </Panel>
-          <MessagePreview text={fill(v.message, sample)} channel={channel} accent={accent} avatar={v.showAvatar} />
-        </div>
-        <Panel title="Auto roles" description="Given to every new member. Roles above Clanky's role can't be picked.">
-          <div className="py-4">
-            <RolePicker value={v.autoRoleIds} onChange={(x) => d.set('autoRoleIds', x)} roles={data.resources.roles} max={5} assignableOnly placeholder="No auto roles" testId="picker-autoroles" />
-          </div>
+        <Panel title="Welcome events" description="Configure join and leave messages separately, without leaving the Welcome module." action={tab === 'leave' ? <Switch checked={v.leaveEnabled} onChange={(leaveEnabled) => d.set('leaveEnabled', leaveEnabled)} label="Enable leave messages" testId="switch-leave" /> : undefined}>
+          <Field label="Event to configure" description={tab === 'join' ? 'Join messages also control member roles and screening behavior.' : 'Leave messages can use the join channel or their own override.'}>
+            <Segmented value={tab} options={[{ value: 'join', label: 'Join' }, { value: 'leave', label: 'Leave' }]} onChange={setTab} testId="segment-welcome-event" />
+          </Field>
         </Panel>
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
-          <Panel title="Leave message" action={<Switch checked={v.leaveEnabled} onChange={(x) => d.set('leaveEnabled', x)} label="Leave messages" testId="switch-leave" />}>
-            <Field label="Message" description="Posted in the same channel when someone leaves.">
-              <TemplateInput value={v.leaveMessage} onChange={(x) => d.set('leaveMessage', x)} placeholders={WELCOME_TOKENS.filter((t) => t.key !== '{user}')} maxLength={1000} />
+        <WelcomeEventEditor
+          event={tab}
+          settings={v[tab]}
+          joinChannelId={v.join.channelId}
+          channels={data.resources.channels}
+          accent={accent}
+          guildId={guildId}
+          artworkUrl={artworkUrls[tab]}
+          artworkVersion={artworkVersion[tab]}
+          hasSavedCustomArtwork={data.settings.welcome[tab].artwork.background === 'custom'}
+          uploading={uploadingArtwork === tab}
+          onChange={(patch) => updateEvent(tab, patch)}
+          onUploadArtwork={(file) => uploadArtwork(tab, file)}
+        />
+        {tab === 'join' && (
+          <Panel title="New-member setup" description="Auto roles always wait for screening to pass. This option also delays the join message.">
+            <Field label="Auto roles" description="Given to every new member. Roles above Clanky’s role can’t be picked.">
+              <RolePicker value={v.autoRoleIds} onChange={(autoRoleIds) => d.set('autoRoleIds', autoRoleIds)} roles={data.resources.roles} max={5} assignableOnly placeholder="No auto roles" testId="picker-autoroles" />
+            </Field>
+            <Field inline label="Send after member screening" description="Wait for Discord’s membership screening before sending the join message and assigning auto roles.">
+              <Switch checked={v.waitForScreening} onChange={(waitForScreening) => d.set('waitForScreening', waitForScreening)} label="Send after member screening" testId="switch-welcome-screening" />
             </Field>
           </Panel>
-          {v.leaveEnabled && <MessagePreview text={fill(v.leaveMessage, sample)} channel={channel} accent={accent} />}
-        </div>
+        )}
       </OffNotice>
-      <SaveBar dirty={d.dirty} saving={d.saving} onSave={() => d.save()} onReset={d.reset} />
+      <SaveBar dirty={d.dirty} saving={d.saving} onSave={save} onReset={reset} />
     </>
   );
 }

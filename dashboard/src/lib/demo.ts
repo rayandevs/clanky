@@ -49,8 +49,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.12', label: 'v0.1.0 Beta 12', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-alpha.6', label: 'v0.1.0 Alpha 6', codename: 'Scrapyard' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.14', label: 'v0.1.0 Beta 14', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-alpha.7', label: 'v0.1.0 Alpha 7', codename: 'Scrapyard' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -106,7 +106,28 @@ const defaults = (): GuildSettings => ({
   general: { accentColor: 0xe2702f, updatesChannelId: id(12) },
   moderation: { enabled: true, logChannelId: id(41), reportsChannelId: id(42), dmOnAction: true, requireReason: false },
   logging: { enabled: true, channelId: id(43), events: ['messageDelete', 'messageEdit', 'memberJoin', 'memberLeave', 'memberRoles', 'nickname'], ignoredChannelIds: [id(24)] },
-  welcome: { enabled: true, channelId: id(11), message: 'Welcome to **{server}**, {user}! You are member **#{count}** 🎉', leaveEnabled: false, leaveMessage: '**{username}** left the server. 👋', autoRoleIds: [id(57)], showAvatar: true },
+  welcome: {
+    enabled: true,
+    join: {
+      channelId: id(11),
+      message: 'Welcome to **{server}**, {user}! You are member **#{count}** 🎉',
+      format: 'container',
+      pingUser: true,
+      includeBots: false,
+      artwork: { template: 'celebration', background: 'preset', showAvatar: true, showMemberCount: true, showServerName: true },
+    },
+    leaveEnabled: false,
+    leave: {
+      channelId: null,
+      message: '**{username}** left the server. 👋',
+      format: 'container',
+      pingUser: false,
+      includeBots: false,
+      artwork: { template: 'soft', background: 'preset', showAvatar: false, showMemberCount: false, showServerName: true },
+    },
+    autoRoleIds: [id(57)],
+    waitForScreening: false,
+  },
   tickets: {
     enabled: true, parentId: id(30), logChannelId: id(44), staffRoleIds: [id(53)], maxOpenPerUser: 1, transcriptRetentionDays: '90',
     panels: [{
@@ -199,6 +220,8 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.14', date: '2026-10-18', title: 'A warmer welcome 👋', highlights: ['Configure independent join and leave messages, channels, and formats', 'Customize generated member cards with presets or uploaded backgrounds', 'Control mentions, bot greetings, and screening-delayed welcome messages'] },
+    { version: '0.1.0-beta.13', date: '2026-10-18', title: 'Clearer suggestion cards 💡', highlights: ['Give suggestion details, status, category, and author more room to breathe', 'Simplify vote controls by removing duplicate counts and the redundant progress display'] },
     { version: '0.1.0-beta.12', date: '2026-10-17', title: 'Ideas that move 💡', highlights: ['Review suggestions in Discord or a searchable dashboard queue with status history and notes', 'Organize submissions with categories, anonymity choices, limits and cooldowns', 'Author updates, reviewer digests and recovery for failed Discord posts'] },
     { version: '0.1.0-beta.11', date: '2026-10-16', title: 'Clearer dashboard legal docs 📜', highlights: ['Read Clanky’s Privacy Policy and Terms of Service on public dashboard pages', 'Both policies explain self-hosted operation, data handling, retention and deletion scope'] },
     { version: '0.1.0-beta.10', date: '2026-10-16', title: 'A more personal leveling system ⭐', highlights: ['Choose a progression pace without resetting existing levels', 'Track every human message and view leveling activity', 'Customize rank cards and compete in seasons'] },
@@ -210,6 +233,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-alpha.7', date: '2026-10-18', title: 'A warmer welcome', highlights: ['Configure Join and Leave events separately with distinct formats and previews', 'Choose generated card templates or upload custom backgrounds', 'Control mentions, bots, avatars, member counts and screening-delayed greetings'] },
     { version: '0.1.0-alpha.6', date: '2026-10-17', title: 'Ideas that move', highlights: ['Search, filter and review suggestions from the dashboard', 'Inspect status history and vote trends, and recover failed Discord posts', 'Configure categories, limits, cooldowns, anonymity and reviewer digests'] },
     { version: '0.1.0-alpha.5', date: '2026-10-16', title: 'Clearer legal docs', highlights: ["Read Clanky's Privacy Policy and Terms of Service on public dashboard pages", 'Find both documents from footer links, with a shared layout matching the dashboard', 'Policies explain self-hosted operation, data handling, retention and deletion scope'] },
     { version: '0.1.0-alpha.4', date: '2026-10-16', title: 'A more personal leveling system', highlights: ['Tune progression and XP rules', 'Review messages, XP, and active-member analytics', 'Run manual seasons and preview reward changes'] },
@@ -352,6 +376,7 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
       return ok({ result: existing ? 'updated' : 'posted' });
     }
     if (c === 'tickets' && d === 'panels' && e && parts[6] === 'artwork' && method === 'POST') return ok({ ok: true, width: 1200, height: 600 });
+    if (c === 'welcome' && (d === 'join' || d === 'leave') && e === 'artwork' && method === 'POST') return ok({ ok: true, width: 1200, height: 600 });
     if (c === 'tickets' && d === 'transcripts' && !e && method === 'GET') {
       const params = new URLSearchParams(path.split('?')[1] ?? '');
       const q = (params.get('q') ?? '').toLowerCase();

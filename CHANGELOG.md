@@ -4,6 +4,18 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.14] — 2026-10-18
+
+### Added
+- Separate join and leave configuration from `/settings` and the dashboard, including independent message formats, channels, previews, mention controls, and bot-member filters
+- Choose a Components V2 container, plain text, text with a generated image, or an image-only card
+- Generate Canvas welcome/farewell cards with three templates, optional custom backgrounds, member avatars, server names, and member counts
+- Optionally delay the join message until Discord membership screening passes
+
+### Changed
+- Existing shared welcome/leave settings migrate into the new event-specific configuration without losing channels, messages, or avatar behavior
+- Ticket and Welcome image uploads share the same validation and PNG-normalization helper
+
 ## [0.1.0-beta.13] — 2026-10-18
 
 ### Changed

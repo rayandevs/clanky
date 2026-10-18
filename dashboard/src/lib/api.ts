@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import type { WelcomeEvent } from './types';
 import { DEMO } from './utils';
 
 export class ApiError extends Error {
@@ -30,12 +31,11 @@ export async function api<T>(method: Method, path: string, body?: unknown): Prom
 
 export const get = <T,>(path: string) => api<T>('GET', path);
 
-/** Upload a panel image as raw bytes; demo mode simulates the write. */
-export async function uploadTicketArtwork(guildId: string, panelId: string, file: File): Promise<{ ok: true; width?: number; height?: number }> {
-  const path = `/api/guilds/${guildId}/tickets/panels/${panelId}/artwork`;
+/** Upload an artwork image as raw bytes; demo mode simulates the write. */
+async function uploadArtwork(path: string, file: File): Promise<{ ok: true; width?: number; height?: number }> {
   if (DEMO) {
     const { demoApi } = await import('./demo');
-    return demoApi('POST', path, { name: file.name, contentType: file.type, size: file.size }) as Promise<{ ok: true }>;
+    return demoApi('POST', path, { name: file.name, contentType: file.type, size: file.size }) as Promise<{ ok: true; width?: number; height?: number }>;
   }
   const response = await fetch(path, {
     method: 'POST',
@@ -48,6 +48,12 @@ export async function uploadTicketArtwork(guildId: string, panelId: string, file
   if (!response.ok) throw new ApiError(response.status, data.message ?? 'Could not upload that image.', data.error);
   return data as { ok: true; width?: number; height?: number };
 }
+
+export const uploadTicketArtwork = (guildId: string, panelId: string, file: File) => uploadArtwork(`/api/guilds/${guildId}/tickets/panels/${panelId}/artwork`, file);
+export const uploadWelcomeArtwork = (guildId: string, event: WelcomeEvent, file: File) => uploadArtwork(`/api/guilds/${guildId}/welcome/${event}/artwork`, file);
+
+/** URL of the most recently uploaded welcome-card background for an event. */
+export const welcomeArtworkUrl = (guildId: string, event: WelcomeEvent, version = 0) => `/api/guilds/${guildId}/welcome/${event}/artwork?v=${version}`;
 
 export const queryClient = new QueryClient({
   defaultOptions: {

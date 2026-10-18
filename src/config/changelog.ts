@@ -11,6 +11,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.14',
+    date: '2026-10-18',
+    title: 'A warmer welcome 👋',
+    highlights: [
+      'Configure join and leave messages separately, with their own channels, formats, mentions, and bot-member controls',
+      'Choose a Clanky container, plain text, text with a generated card, or an image-only greeting',
+      'Customize member cards with built-in templates or uploaded backgrounds, avatars, server names, and member counts',
+      'Optionally wait until membership screening passes before greeting new members',
+    ],
+  },
+  {
     version: '0.1.0-beta.13',
     date: '2026-10-18',
     title: 'Clearer suggestion cards 💡',

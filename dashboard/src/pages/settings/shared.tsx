@@ -3,6 +3,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Container, DiscordWindow, Message, Section, Text } from '@/components/discord';
 import { Glass } from '@/components/Glass';
 import { Button, Emoji, Input, Switch, Textarea } from '@/components/ui';
+import type { WelcomeArtwork, WelcomeEvent, WelcomeFormat } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 /** Page title with the module's on/off switch. */
@@ -70,22 +71,57 @@ export function TemplateInput({ value, onChange, placeholders, maxLength, testId
   );
 }
 
-/** Live preview of a Clanky message in Discord. */
-export function MessagePreview({ text, channel, accent, avatar }: { text: string; channel: string; accent: string; avatar?: boolean }) {
+function WelcomeCard({ artwork, artworkUrl, event, message }: { artwork: WelcomeArtwork; artworkUrl?: string; event: WelcomeEvent; message: string }) {
+  const style = {
+    celebration: { background: 'linear-gradient(135deg, #5b2b11 0%, #c2571d 52%, #f5a742 100%)', eyebrow: 'A NEW MEMBER' },
+    minimal: { background: 'linear-gradient(135deg, #20222a 0%, #353946 100%)', eyebrow: 'COMMUNITY UPDATE' },
+    soft: { background: 'linear-gradient(135deg, #34243c 0%, #76526f 52%, #b77b91 100%)', eyebrow: 'MEMBER UPDATE' },
+  }[artwork.template];
+  return (
+    <div className="relative mb-3 min-h-28 overflow-hidden rounded-lg border border-white/[0.12] bg-[#17171e] px-4 py-3 text-white" style={{ background: artwork.background === 'preset' ? style.background : undefined }}>
+      {artwork.background === 'custom' && artworkUrl && <img src={artworkUrl} alt="Custom welcome artwork" className="absolute inset-0 size-full object-cover" />}
+      {artwork.background === 'custom' && <div className="absolute inset-0 bg-[linear-gradient(120deg,rgb(18_18_24/0.3),rgb(18_18_24/0.75))]" />}
+      <div className="relative flex min-h-[88px] items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="stamp text-[10px] tracking-[0.16em] text-white/70">{event === 'join' ? style.eyebrow : 'A MEMBER LEFT'}</p>
+          <p className="mt-1 text-[15px] font-bold">Juno</p>
+          {message && <p className="mt-1 max-w-[420px] truncate text-[11px] text-white/75">{message.replace(/[*_~`]/g, '').replace('@Juno', 'Juno')}</p>}
+          <div className="mt-2 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-white/80">
+            {artwork.showServerName && <span>Your server</span>}
+            {artwork.showServerName && artwork.showMemberCount && <span>·</span>}
+            {artwork.showMemberCount && <span>1,285 members</span>}
+          </div>
+        </div>
+        {artwork.showAvatar && <span className="grid size-12 shrink-0 place-items-center rounded-full border-2 border-white/50 bg-[#eb459e] text-[18px] font-bold shadow-lg">J</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Live preview of a Clanky message, including welcome event text and generated-card formats. */
+export function MessagePreview({ text, channel, accent, avatar, format = 'container', artwork, artworkUrl, event = 'join' }: {
+  text: string;
+  channel: string;
+  accent: string;
+  avatar?: boolean;
+  format?: WelcomeFormat;
+  artwork?: WelcomeArtwork;
+  artworkUrl?: string;
+  event?: WelcomeEvent;
+}) {
+  const hasCard = (format === 'text_image' || format === 'image_only') && artwork;
+  const message = avatar && format === 'container'
+    ? <Section thumb={<span className="grid size-[60px] place-items-center rounded-full bg-[#eb459e] text-[22px] font-bold text-white">J</span>}><Text>{text || ' '}</Text></Section>
+    : <Text>{text || ' '}</Text>;
   return (
     <div>
       <p className="stamp mb-2 text-muted">Preview</p>
       <DiscordWindow channel={channel}>
         <Message time="Today at 9:41 AM">
-          <Container accent={accent}>
-            {avatar ? (
-              <Section thumb={<span className="grid size-[60px] place-items-center rounded-full bg-[#eb459e] text-[22px] font-bold text-white">J</span>}>
-                <Text>{text || ' '}</Text>
-              </Section>
-            ) : (
-              <Text>{text || ' '}</Text>
-            )}
-          </Container>
+          {format === 'container' && <Container accent={accent}>{message}</Container>}
+          {format === 'text' && message}
+          {format === 'text_image' && <>{message}{hasCard && <WelcomeCard artwork={artwork} artworkUrl={artworkUrl} event={event} message="" />}</>}
+          {format === 'image_only' && hasCard && <WelcomeCard artwork={artwork} artworkUrl={artworkUrl} event={event} message={text} />}
         </Message>
       </DiscordWindow>
     </div>

@@ -7,6 +7,7 @@ export * from './Case.js';
 export * from './Ticket.js';
 export * from './TicketPanelMessage.js';
 export * from './TicketPanelArtwork.js';
+export * from './WelcomeArtwork.js';
 export * from './TicketTranscript.js';
 export * from './Suggestion.js';
 export * from './Reminder.js';

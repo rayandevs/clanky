@@ -1,10 +1,9 @@
-import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { ChannelType, PermissionFlagsBits, type Guild, type TextChannel } from 'discord.js';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Clanky } from '../../client/Clanky.js';
 import { createLogger } from '../../core/logger.js';
-import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketModel, TicketPanelArtworkModel, TicketTranscriptMessageModel, TicketTranscriptModel, type SuggestionRecord, type SuggestionStatus, type TicketTranscriptRecord } from '../../database/models/index.js';
+import { CaseModel, MemberModel, SettingsAuditModel, SuggestionModel, TicketModel, TicketPanelArtworkModel, TicketTranscriptMessageModel, TicketTranscriptModel, WelcomeArtworkModel, type SuggestionRecord, type SuggestionStatus, type TicketTranscriptRecord } from '../../database/models/index.js';
 import { canManageAutomod, deleteRule, RULE_KINDS, ruleStates, syncAllRules, upsertRule, type RuleKind } from '../../modules/automod/service.js';
 import { listTicketPanelMessages, publishTicketPanel } from '../../modules/tickets/panels.js';
 import { MAX_TRANSCRIPT_ATTACHMENT_BYTES, readArchivedTranscriptAttachment } from '../../modules/tickets/attachmentArchive.js';
@@ -12,6 +11,7 @@ import { guilds, levels, salvage } from '../../services/index.js';
 import { desiredRewardRoleIds } from '../../modules/leveling/handler.js';
 import { SuggestionActionError, publishSuggestion, reviewSuggestion, SUGGESTION_STATUS_KEYS, syncSuggestionPost } from '../../modules/suggestions/service.js';
 import { isSuggestionAnonymous } from '../../modules/suggestions/privacy.js';
+import { normalizeUploadedImage, UploadedImageError } from '../../render/imageUpload.js';
 import { MODULES } from '../../settings/registry.js';
 import { GuildSettingsSchema, type GuildSettings, type SettingsSection } from '../../settings/schema.js';
 import { canManage, inviteUrl, managedGuild } from '../access.js';
@@ -23,10 +23,6 @@ const log = createLogger('dashboard');
 
 const SECTIONS = Object.keys(GuildSettingsSchema.shape) as SettingsSection[];
 const DAY = 86_400_000;
-const MAX_PANEL_ART = 4 * 1024 * 1024;
-const MAX_PANEL_ART_PIXELS = 12_000_000;
-const MAX_PANEL_ART_DIMENSION = 4096;
-const MAX_PANEL_ART_PNG = 8 * 1024 * 1024;
 const TRANSCRIPT_PAGE_SIZE = 20;
 const TRANSCRIPT_MESSAGE_PAGE_SIZE = 50;
 
@@ -227,6 +223,15 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
       for (const panel of customPanels) {
         const image = await TicketPanelArtworkModel.exists({ guildId: guild.id, panelId: panel.id });
         if (!image) return reply.code(400).send({ error: 'invalid', message: `Upload an image for “${panel.title}” before selecting custom artwork.` });
+      }
+    }
+    if (section === 'welcome') {
+      const welcome = value as GuildSettings['welcome'];
+      for (const event of ['join', 'leave'] as const) {
+        const config = welcome[event];
+        if (config.artwork.background !== 'custom' || !['text_image', 'image_only'].includes(config.format)) continue;
+        const image = await WelcomeArtworkModel.exists({ guildId: guild.id, event });
+        if (!image) return reply.code(400).send({ error: 'invalid', message: `Upload a custom background for the ${event} card before saving.` });
       }
     }
     if (section === 'leveling') {
@@ -568,32 +573,19 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
     const { panelId } = request.params as { panelId: string };
     const panel = (await guilds.settings(guild.id)).tickets.panels.find((item) => item.id === panelId);
     if (!panel) return reply.code(404).send({ error: 'not_found', message: 'That ticket panel no longer exists.' });
-    const raw = request.body;
-    if (!Buffer.isBuffer(raw) || raw.length === 0 || raw.length > MAX_PANEL_ART) {
-      return reply.code(400).send({ error: 'invalid', message: 'Choose an image under 4 MiB.' });
-    }
-    let image;
+    let normalized;
     try {
-      image = await loadImage(raw);
-    } catch {
-      return reply.code(400).send({ error: 'invalid', message: 'That file is not a supported image.' });
+      normalized = await normalizeUploadedImage(request.body);
+    } catch (error) {
+      if (error instanceof UploadedImageError) return reply.code(400).send({ error: 'invalid', message: error.message });
+      throw error;
     }
-    if (!image.width || !image.height || image.width > MAX_PANEL_ART_DIMENSION || image.height > MAX_PANEL_ART_DIMENSION || image.width * image.height > MAX_PANEL_ART_PIXELS) {
-      return reply.code(400).send({ error: 'invalid', message: 'Image dimensions must be at most 4096×4096 and 12 megapixels.' });
-    }
-    const scale = Math.min(1, 1600 / image.width, 900 / image.height);
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-    const canvas = createCanvas(width, height);
-    canvas.getContext('2d').drawImage(image, 0, 0, width, height);
-    const normalized = canvas.toBuffer('image/png');
-    if (normalized.length > MAX_PANEL_ART_PNG) return reply.code(400).send({ error: 'invalid', message: 'The optimized image is too large. Try a smaller or simpler image.' });
     await TicketPanelArtworkModel.findOneAndUpdate(
       { guildId: guild.id, panelId },
-      { $set: { guildId: guild.id, panelId, contentType: 'image/png', data: normalized, uploadedBy: member.id } },
+      { $set: { guildId: guild.id, panelId, contentType: 'image/png', data: normalized.data, uploadedBy: member.id } },
       { upsert: true, returnDocument: 'after' },
     );
-    return { ok: true, contentType: 'image/png', width, height };
+    return { ok: true, contentType: 'image/png', width: normalized.width, height: normalized.height };
   });
 
   app.get('/api/guilds/:guildId/tickets/panels/:panelId/artwork', async (request, reply) => {
@@ -603,6 +595,36 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
     const asset = await TicketPanelArtworkModel.findOne({ guildId: access.guild.id, panelId }).lean();
     if (!asset) return reply.code(404).send({ error: 'not_found', message: 'This panel has no uploaded image.' });
     return reply.type('image/png').header('Cache-Control', 'private, max-age=60').send(Buffer.from(asset.data));
+  });
+
+  app.post('/api/guilds/:guildId/welcome/:event/artwork', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const event = (request.params as { event: string }).event;
+    if (event !== 'join' && event !== 'leave') return reply.code(400).send({ error: 'invalid', message: 'Choose join or leave artwork.' });
+    let normalized;
+    try {
+      normalized = await normalizeUploadedImage(request.body);
+    } catch (error) {
+      if (error instanceof UploadedImageError) return reply.code(400).send({ error: 'invalid', message: error.message });
+      throw error;
+    }
+    await WelcomeArtworkModel.findOneAndUpdate(
+      { guildId: access.guild.id, event },
+      { $set: { guildId: access.guild.id, event, contentType: 'image/png', data: normalized.data, uploadedBy: access.member.id } },
+      { upsert: true, returnDocument: 'after' },
+    );
+    return { ok: true, contentType: 'image/png', width: normalized.width, height: normalized.height };
+  });
+
+  app.get('/api/guilds/:guildId/welcome/:event/artwork', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const event = (request.params as { event: string }).event;
+    if (event !== 'join' && event !== 'leave') return reply.code(400).send({ error: 'invalid', message: 'Choose join or leave artwork.' });
+    const asset = await WelcomeArtworkModel.findOne({ guildId: access.guild.id, event }).lean();
+    if (!asset) return reply.code(404).send({ error: 'not_found', message: 'This welcome event has no uploaded background.' });
+    return reply.type('image/png').header('Cache-Control', 'private, no-store').send(Buffer.from(asset.data));
   });
 
   app.get('/api/guilds/:guildId/tickets/transcripts', async (request, reply) => {

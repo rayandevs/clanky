@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-alpha.7",
+    "date": "2026-10-18",
+    "title": "A warmer welcome",
+    "highlights": [
+      "Configure Join and Leave events in separate dashboard tabs, with their own channels, message formats, previews and controls",
+      "Choose a built-in Canvas card template or upload custom backgrounds, then show or hide member avatars, server names and member counts",
+      "Set mention and bot-member preferences, and optionally wait for membership screening before greeting new members"
+    ]
+  },
+  {
     "version": "0.1.0-alpha.6",
     "date": "2026-10-17",
     "title": "Ideas that move",
