@@ -53,6 +53,8 @@
 
 @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
 @keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes clanky-float { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-3px) rotate(3deg); } }
+@keyframes clanky-signal { 0%, 100% { opacity: 0.28; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
 
 /* ───────────────────────── Base ───────────────────────── */
 @layer base {

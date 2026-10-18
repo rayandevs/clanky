@@ -4,7 +4,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Route, Router, Switch, useLocation } from 'wouter';
 import { useHashLocation } from 'wouter/use-hash-location';
 import { Background } from './components/Background';
-import { LogoMark } from './components/Logo';
+import { ClankyLoader } from './components/ClankyLoader';
 import { Footer } from './components/Footer';
 import { Nav } from './components/Nav';
 import { ToastProvider } from './components/Toast';
@@ -23,10 +23,9 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RouteLoading() {
   return (
-    <div role="status" aria-live="polite" className="grid min-h-[100dvh] place-items-center px-5 py-20">
-      <div className="glass glass-strong flex items-center gap-3 rounded-2xl px-5 py-4 text-sm text-muted">
-        <LogoMark className="size-7 animate-pulse" />
-        <span>Loading dashboard…</span>
+    <div className="grid min-h-[100dvh] place-items-center px-5 py-20">
+      <div className="glass glass-strong rounded-3xl px-9 py-7">
+        <ClankyLoader label="Clanky is gearing up…" />
       </div>
     </div>
   );

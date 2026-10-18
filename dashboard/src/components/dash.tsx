@@ -7,7 +7,7 @@ import { useLogin, useMe } from '@/lib/hooks';
 import type { GuildSettings, SectionId, SettingsPayload } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Glass } from './Glass';
-import { LogoMark } from './Logo';
+import { ClankyLoader } from './ClankyLoader';
 import { DiscordGlyph } from './Nav';
 import { useToast } from './Toast';
 import { Button, Emoji, Skeleton, Switch } from './ui';
@@ -89,13 +89,7 @@ export function EmptyState({ emoji, title, body, action }: { emoji: string; titl
 }
 
 export function BrandSpinner() {
-  return (
-    <div className="grid place-items-center py-24">
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}>
-        <LogoMark className="size-12 opacity-80" />
-      </motion.div>
-    </div>
-  );
+  return <ClankyLoader size="compact" className="py-24" />;
 }
 
 /* ───────────────────────── Settings drafts ───────────────────────── */
