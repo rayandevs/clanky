@@ -10,6 +10,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 - **New modal components.** Labels, role selects, radio groups and checkboxes inside modals.
 - **Native Discord features.** AutoMod rules, native polls, user-installable commands and context menus.
 - **Web dashboard.** Manage every setting, see server stats and your Salvage progress at the same address the bot runs on.
+- **Feedback.** Signed-in users can send a star rating and note from the footer link or a randomized, dismissible prompt; submissions are rate-limited and delivered through the operator’s configured Discord webhook.
 
 ---
 
@@ -128,6 +129,7 @@ npm start
 | `DISCORD_CLIENT_SECRET` | | OAuth2 client secret. Needed for "Log in with Discord" |
 | `DASHBOARD_SESSION_SECRET` | | 32+ random characters. Signs cookies and encrypts tokens. If missing, a random one is used and logins reset on restart |
 | `DASHBOARD_TRUST_PROXY` | | `true` behind a reverse proxy (Nginx, Cloudflare) |
+| `FEEDBACK_WEBHOOK_URL` | | Optional Discord webhook for the public dashboard feedback form. Keep it in the server environment; it is never sent to browsers. |
 
 Clanky validates every variable when it starts and shows a clear list of anything missing or wrong.
 
@@ -241,8 +243,8 @@ For OAuth while using Vite, set `DASHBOARD_URL=http://localhost:5173` and add `h
 
 The website has its own version, separate from the bot:
 
-- Source of truth: `dashboard/package.json` → `version` (`0.1.0-alpha.1`, codename **Scrapyard**).
-- `npm run dashboard:release` bumps the alpha build. Add a matching entry to `dashboard/changelog.json` (shown on the Changelog page) and `dashboard/CHANGELOG.md`.
+- Source of truth: `dashboard/package.json` → `version` (`0.1.0-beta.1`, codename **Rench**).
+- `npm run dashboard:release` bumps the beta build. Add a matching entry to `dashboard/changelog.json` (shown on the Changelog page) and `dashboard/CHANGELOG.md`.
 - Git tags use the `dashboard-v` prefix (`dashboard-v0.1.0-alpha.1`). Bot tags stay `v…`.
 - The footer and `/api/meta` show both versions.
 
@@ -256,7 +258,7 @@ The website has its own version, separate from the bot:
 | `npm run dashboard:dev` | Dashboard dev server with hot reload |
 | `npm run dashboard:build` | Build the dashboard to `dashboard/dist` |
 | `npm run dashboard:demo` | Static demo build with sample data |
-| `npm run dashboard:release` | Bump the dashboard alpha version |
+| `npm run dashboard:release` | Bump the dashboard beta version |
 | `npm start` | Run the compiled bot |
 | `npm run typecheck` | Type-check without emitting |
 | `npm run deploy:commands` | Register commands (`-- --global`, `-- --clear`) |

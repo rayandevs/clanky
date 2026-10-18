@@ -16,6 +16,7 @@ export function Footer() {
           </div>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-muted sm:ml-auto">
+          <Link href="/feedback" className="hover:text-text">Feedback</Link>
           <Link href="/changelog" className="hover:text-text">Changelog</Link>
           <Link href="/dashboard" className="hover:text-text">Dashboard</Link>
           <Link href="/privacy" className="hover:text-text">Privacy Policy</Link>

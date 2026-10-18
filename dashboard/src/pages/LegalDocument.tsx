@@ -15,6 +15,7 @@ type LegalDocumentProps = {
   introduction: string;
   sections: LegalSection[];
   notice?: ReactNode;
+  lastUpdated?: string;
 };
 
 export function LegalParagraph({ children }: { children: ReactNode }) {
@@ -29,14 +30,14 @@ export function LegalItem({ children }: { children: ReactNode }) {
   return <li className="pl-1">{children}</li>;
 }
 
-export default function LegalDocument({ eyebrow, title, introduction, sections, notice }: LegalDocumentProps) {
+export default function LegalDocument({ eyebrow, title, introduction, sections, notice, lastUpdated = 'October 16, 2026' }: LegalDocumentProps) {
   return (
     <div className="mx-auto max-w-6xl px-5 pb-24 pt-32 sm:pt-36">
       <Reveal>
         <Eyebrow>{eyebrow}</Eyebrow>
         <h1 className="mt-4 max-w-4xl text-[clamp(2.35rem,5vw,4rem)] font-extrabold">{title}</h1>
         <p className="mt-4 max-w-3xl text-[16px] leading-7 text-muted sm:text-[17px]">{introduction}</p>
-        <p className="stamp mt-5 text-[10px] text-faint">Last updated · October 16, 2026</p>
+        <p className="stamp mt-5 text-[10px] text-faint">Last updated · {lastUpdated}</p>
       </Reveal>
 
       {notice && (

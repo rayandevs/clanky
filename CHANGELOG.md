@@ -4,6 +4,14 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## Dashboard 0.1.0-beta.1 — 2026-10-19
+
+### Added
+- Sign-in-required feedback link and randomized in-dashboard prompt, with cooldowns, dismissal, and a permanent opt-out
+- Per-IP and per-account rate limits, honeypot filtering, and validated 1–5 star notes delivered through a server-only Discord webhook
+- Explicit consent for Discord profile, page, timestamp, IP, and browser metadata; session IDs, cookies, and OAuth tokens are excluded
+- Dashboard release channel moved from Alpha to Beta under the Rench codename
+
 ## [0.1.0-beta.16] — 2026-10-19
 
 ### Fixed

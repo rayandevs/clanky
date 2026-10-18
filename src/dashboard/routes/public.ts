@@ -28,6 +28,7 @@ export async function publicRoutes(app: FastifyInstance, client: Clanky) {
       game: { items: ITEMS.length, zones: ZONES.length },
       modules: MODULES,
       loginEnabled,
+      feedbackEnabled: Boolean(env.FEEDBACK_WEBHOOK_URL),
       inviteUrl: inviteUrl(),
       supportUrl: env.SUPPORT_URL ?? null,
     };

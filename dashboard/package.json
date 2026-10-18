@@ -1,6 +1,6 @@
 {
   "name": "clanky-dashboard",
-  "version": "0.1.0-alpha.9",
+  "version": "0.1.0-beta.1",
   "private": true,
   "type": "module",
   "description": "Clanky's web dashboard. Served by the bot process.",
@@ -10,7 +10,7 @@
     "build:demo": "vite build --mode demo --outDir dist-demo",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "release": "npm version prerelease --preid alpha --no-git-tag-version"
+    "release": "npm version prerelease --preid beta --no-git-tag-version"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.2",

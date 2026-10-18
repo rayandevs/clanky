@@ -17,6 +17,7 @@ export interface Meta {
   game: { items: number; zones: number };
   modules: ModuleInfo[];
   loginEnabled: boolean;
+  feedbackEnabled: boolean;
   inviteUrl: string;
   supportUrl: string | null;
 }

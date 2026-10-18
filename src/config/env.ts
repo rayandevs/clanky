@@ -26,6 +26,21 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   OWNER_IDS: csvIds,
   SUPPORT_URL: z.url().optional(),
+  FEEDBACK_WEBHOOK_URL: z.string().url().optional().refine((value) => {
+    if (!value) return true;
+    try {
+      const url = new URL(value);
+      return ['discord.com', 'discordapp.com'].includes(url.hostname)
+        && url.protocol === 'https:'
+        && !url.username
+        && !url.password
+        && !url.search
+        && !url.hash
+        && /^\/api\/webhooks\/\d{17,20}\/[A-Za-z0-9._-]+$/.test(url.pathname);
+    } catch {
+      return false;
+    }
+  }, 'must be a Discord webhook URL'),
   ENABLE_MESSAGE_CONTENT: bool(true),
 
   // Dashboard (runs inside the bot process)

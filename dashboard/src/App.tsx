@@ -5,6 +5,7 @@ import { Route, Router, Switch, useLocation } from 'wouter';
 import { useHashLocation } from 'wouter/use-hash-location';
 import { Background } from './components/Background';
 import { ClankyLoader } from './components/ClankyLoader';
+import { FeedbackPrompt } from './components/FeedbackPrompt';
 import { Footer } from './components/Footer';
 import { Nav } from './components/Nav';
 import { ToastProvider } from './components/Toast';
@@ -19,6 +20,7 @@ const Salvage = lazy(() => import('./pages/Salvage'));
 const Changelog = lazy(() => import('./pages/Changelog'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
+const Feedback = lazy(() => import('./pages/Feedback'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RouteLoading() {
@@ -55,6 +57,7 @@ function Routes() {
             <Route path="/changelog" component={Changelog} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />
+            <Route path="/feedback" component={Feedback} />
             <Route component={NotFound} />
           </Switch>
         </Suspense>
@@ -72,6 +75,7 @@ export default function App() {
             <Background />
             <Nav />
             <Routes />
+            <FeedbackPrompt />
             <Footer />
           </Router>
         </ToastProvider>

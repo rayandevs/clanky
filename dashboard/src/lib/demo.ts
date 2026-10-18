@@ -50,10 +50,11 @@ const MODULES: Meta['modules'] = [
 
 const meta: Meta = {
   bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.15', label: 'v0.1.0 Beta 15', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-alpha.8', label: 'v0.1.0 Alpha 8', codename: 'Scrapyard' } },
+  dashboard: { version: { raw: '0.1.0-beta.1', label: 'v0.1.0 Beta 1', codename: 'Rench' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
+  feedbackEnabled: true,
   inviteUrl: 'https://discord.com/oauth2/authorize',
   supportUrl: null,
 };
@@ -234,6 +235,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-beta.1', date: '2026-10-19', title: 'Rench gets a voice', highlights: ['Signed-in users can send 1–5 star ratings from the footer link or a randomized prompt with cooldown and permanent opt-out', 'Per-account and per-IP limits protect feedback delivery through the server-only Discord webhook', 'Acknowledged submissions carry selected profile and request metadata, never session credentials; the dashboard begins its beta releases under Rench'] },
     { version: '0.1.0-alpha.8', date: '2026-10-18', title: 'Welcome cards, in sync', highlights: ['See the exact Canvas card image Clanky will send', 'Preview updates match template, background, avatar and member details'] },
     { version: '0.1.0-alpha.7', date: '2026-10-18', title: 'A warmer welcome', highlights: ['Configure Join and Leave events separately with distinct formats and previews', 'Choose generated card templates or upload custom backgrounds', 'Control mentions, bots, avatars, member counts and screening-delayed greetings'] },
     { version: '0.1.0-alpha.6', date: '2026-10-17', title: 'Ideas that move', highlights: ['Search, filter and review suggestions from the dashboard', 'Inspect status history and vote trends, and recover failed Discord posts', 'Configure categories, limits, cooldowns, anonymity and reviewer digests'] },
@@ -256,6 +258,7 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
   if (a === 'auth' && b === 'logout') return ok(((loggedIn = false), { ok: true }));
   if (a === 'auth' && b === 'demo-login') return ok(((loggedIn = true), { ok: true }));
   if (!loggedIn) throw new ApiError(401, 'Please log in first.', 'unauthorized');
+  if (a === 'feedback' && method === 'POST') return ok({ ok: true });
 
   if (a === 'me' && !b) return ok(me);
   if (a === 'me' && b === 'preferences') return ok({ preferences: Object.assign(me.preferences, body) });

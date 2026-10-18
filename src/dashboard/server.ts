@@ -9,10 +9,11 @@ import type { Clanky } from '../client/Clanky.js';
 import { env, isDev } from '../config/env.js';
 import { createLogger } from '../core/logger.js';
 import { DiscordHttpError } from './discord.js';
-import { attachSession, AuthError, authRoutes, cookieSecret, loginEnabled } from './auth.js';
+import { attachSession, AuthError, authRoutes, cookieSecret, loginEnabled, requireUser } from './auth.js';
 import { guildRoutes } from './routes/guilds.js';
 import { meRoutes } from './routes/me.js';
 import { publicRoutes } from './routes/public.js';
+import { feedbackRoutes } from './routes/feedback.js';
 import { dashboardVersion } from './version.js';
 
 const log = createLogger('dashboard');
@@ -65,6 +66,14 @@ export async function createDashboard(client: Clanky): Promise<FastifyInstance> 
   });
   await app.register(authRoutes);
   await app.register(async (scope) => publicRoutes(scope, client));
+  await app.register(async (scope) => feedbackRoutes(scope, {
+    webhookUrl: env.FEEDBACK_WEBHOOK_URL,
+    requireUser,
+    getIdentity: (request) => {
+      const { userId, username, globalName } = request.session!.record;
+      return { userId, username, displayName: globalName };
+    },
+  }));
   await app.register(async (scope) => meRoutes(scope, client));
   await app.register(async (scope) => guildRoutes(scope, client));
 

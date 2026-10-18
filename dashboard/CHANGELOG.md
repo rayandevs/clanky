@@ -4,6 +4,13 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-beta.1 · Rench · 2026-10-19
+
+- Added a sign-in-required feedback page and a randomized prompt with cooldown, dismissal, and a permanent opt-out
+- Deliver 1–5 star ratings and notes through a server-only Discord webhook with account/IP throttles, validation, and mention suppression
+- Disclose and require acknowledgement for Discord profile, page, timestamp, source IP, and user-agent metadata; session IDs, cookies, and tokens are excluded
+- Moved dashboard releases from Alpha to Beta; the dashboard codename is now Rench
+
 ## 0.1.0-alpha.9 · Scrapyard · 2026-10-19
 
 - Replaced scroll-linked background effects with a static glow, reduced backdrop blur, and changed route transitions to avoid expensive filters

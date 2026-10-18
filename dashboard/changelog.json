@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.1.0-beta.1",
+    "date": "2026-10-19",
+    "title": "Rench gets a voice",
+    "highlights": [
+      "Signed-in users can send 1–5 star ratings and notes from the footer link or a randomized, dismissible prompt",
+      "Feedback is rate-limited and delivered server-side through an optional Discord webhook that is never sent to the browser",
+      "With explicit consent, submissions include Discord profile, page, time, IP and browser metadata—but no session credentials",
+      "The dashboard begins its beta releases under the Rench codename"
+    ]
+  },
+  {
     "version": "0.1.0-alpha.9",
     "date": "2026-10-19",
     "title": "A smoother, steadier dashboard",
