@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.17',
+    date: '2026-10-19',
+    title: 'A guide for every step',
+    highlights: [
+      'Added a searchable Help Center to the dashboard, with friendly step-by-step guides for Clanky’s bot and web features',
+      'Find answers by topic, share a direct guide link, and follow related articles without leaving the dashboard',
+      'Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen',
+    ],
+  },
+  {
     version: '0.1.0-beta.16',
     date: '2026-10-19',
     title: 'A smoother, steadier dashboard',

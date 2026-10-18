@@ -4,6 +4,12 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-beta.2 · Rench · 2026-10-19
+
+- Added a searchable Help Center inside the dashboard, with guides for core bot features, server setup, and dashboard workflows
+- Guides include shareable links, keyboard search, topic browsing, contents navigation, related articles, and clear numbered steps and callouts
+- Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen
+
 ## 0.1.0-beta.1 · Rench · 2026-10-19
 
 - Added a sign-in-required feedback page and a randomized prompt with cooldown, dismissal, and a permanent opt-out

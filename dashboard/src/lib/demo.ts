@@ -49,8 +49,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.15', label: 'v0.1.0 Beta 15', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-beta.1', label: 'v0.1.0 Beta 1', codename: 'Rench' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.17', label: 'v0.1.0 Beta 17', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-beta.2', label: 'v0.1.0 Beta 2', codename: 'Rench' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -221,6 +221,7 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.17', date: '2026-10-19', title: 'A guide for every step', highlights: ['Added a searchable Help Center to the dashboard, with friendly step-by-step guides for Clanky’s bot and web features', 'Find answers by topic, share a direct guide link, and follow related articles without leaving the dashboard', 'Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen'] },
     { version: '0.1.0-beta.15', date: '2026-10-18', title: 'Welcome cards, in sync 👋', highlights: ['Dashboard previews use the same Canvas renderer as bot messages', 'Template colors and labels now match their names', 'Clean card text and no Discord ALT overlay'] },
     { version: '0.1.0-beta.14', date: '2026-10-18', title: 'A warmer welcome 👋', highlights: ['Configure independent join and leave messages, channels, and formats', 'Customize generated member cards with presets or uploaded backgrounds', 'Control mentions, bot greetings, and screening-delayed welcome messages'] },
     { version: '0.1.0-beta.13', date: '2026-10-18', title: 'Clearer suggestion cards 💡', highlights: ['Give suggestion details, status, category, and author more room to breathe', 'Simplify vote controls by removing duplicate counts and the redundant progress display'] },
@@ -235,6 +236,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-beta.2', date: '2026-10-19', title: 'Help, without the hunt', highlights: ['Browse friendly guides for getting started, dashboard settings, and Clanky’s bot features', 'Search guide text and topics instantly, jump between sections, and share direct links to individual guides', 'Step-by-step cards, quick tips, related guides, and keyboard search make answers easier to follow', 'Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen'] },
     { version: '0.1.0-beta.1', date: '2026-10-19', title: 'Rench gets a voice', highlights: ['Signed-in users can send 1–5 star ratings from the footer link or a randomized prompt with cooldown and permanent opt-out', 'Per-account and per-IP limits protect feedback delivery through the server-only Discord webhook', 'Acknowledged submissions carry selected profile and request metadata, never session credentials; the dashboard begins its beta releases under Rench'] },
     { version: '0.1.0-alpha.8', date: '2026-10-18', title: 'Welcome cards, in sync', highlights: ['See the exact Canvas card image Clanky will send', 'Preview updates match template, background, avatar and member details'] },
     { version: '0.1.0-alpha.7', date: '2026-10-18', title: 'A warmer welcome', highlights: ['Configure Join and Leave events separately with distinct formats and previews', 'Choose generated card templates or upload custom backgrounds', 'Control mentions, bots, avatars, member counts and screening-delayed greetings'] },

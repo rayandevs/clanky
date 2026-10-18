@@ -4,6 +4,18 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.17] — 2026-10-19
+
+### Added
+- Added an in-dashboard Help Center with searchable, step-by-step guides for setting up and using Clanky
+- Browse by topic, jump to sections, follow related guides, or share a link to a specific article
+
+## Dashboard 0.1.0-beta.2 — 2026-10-19
+
+### Added
+- Added a searchable Help Center to the dashboard for bot commands, community tools, moderation, engagement, and dashboard workflows
+- Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen
+
 ## Dashboard 0.1.0-beta.1 — 2026-10-19
 
 ### Added

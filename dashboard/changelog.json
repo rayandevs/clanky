@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.1.0-beta.2",
+    "date": "2026-10-19",
+    "title": "Help, without the hunt",
+    "highlights": [
+      "Browse friendly guides for getting started, dashboard settings, and Clanky’s bot features",
+      "Search guide text and topics instantly, jump between sections, and share direct links to individual guides",
+      "Step-by-step cards, quick tips, related guides, and keyboard search make answers easier to follow",
+      "Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen"
+    ]
+  },
+  {
     "version": "0.1.0-beta.1",
     "date": "2026-10-19",
     "title": "Rench gets a voice",

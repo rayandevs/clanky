@@ -21,6 +21,7 @@ const Changelog = lazy(() => import('./pages/Changelog'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Feedback = lazy(() => import('./pages/Feedback'));
+const HelpCenter = lazy(() => import('./pages/HelpCenter'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RouteLoading() {
@@ -36,7 +37,9 @@ function RouteLoading() {
 function Routes() {
   const [location] = useLocation();
   const area = location.startsWith('/dashboard/') ? location.split('/').slice(0, 3).join('/') : location;
-  useEffect(() => window.scrollTo({ top: 0 }), [area]);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [area]);
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.main
@@ -58,6 +61,8 @@ function Routes() {
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />
             <Route path="/feedback" component={Feedback} />
+            <Route path="/help" component={HelpCenter} />
+            <Route path="/help/:slug" component={HelpCenter} />
             <Route component={NotFound} />
           </Switch>
         </Suspense>

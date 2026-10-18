@@ -2,7 +2,7 @@
 
 A multipurpose Discord bot for **community management, moderation and engagement** — built with the newest Discord features and set up entirely from Discord.
 
-> **Version:** `0.1.0-beta.1` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
+> **Version:** `0.1.0-beta.17` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
 
 - **Slash commands only.** No prefixes, no message commands.
 - **Components V2 everywhere.** Every message uses Containers, Sections, Text Displays, Separators and File components. No embeds.
@@ -10,6 +10,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 - **New modal components.** Labels, role selects, radio groups and checkboxes inside modals.
 - **Native Discord features.** AutoMod rules, native polls, user-installable commands and context menus.
 - **Web dashboard.** Manage every setting, see server stats and your Salvage progress at the same address the bot runs on.
+- **Help Center.** Search friendly, step-by-step guides for the bot and dashboard without leaving the site.
 - **Feedback.** Signed-in users can send a star rating and note from the footer link or a randomized, dismissible prompt; submissions are rate-limited and delivered through the operator’s configured Discord webhook.
 
 ---

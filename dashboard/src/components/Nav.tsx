@@ -33,6 +33,7 @@ export function Nav() {
         <div className="hidden items-center gap-1 md:flex">
           <button onClick={() => scrollTo('features')} className="rounded-lg px-3 py-1.5 text-[14px] text-muted transition-colors hover:text-text">Features</button>
           <button onClick={() => scrollTo('salvage')} className="rounded-lg px-3 py-1.5 text-[14px] text-muted transition-colors hover:text-text">Salvage</button>
+          <Link href="/help" className="rounded-lg px-3 py-1.5 text-[14px] text-muted transition-colors hover:text-text">Help</Link>
           <Link href="/changelog" className="rounded-lg px-3 py-1.5 text-[14px] text-muted transition-colors hover:text-text">Changelog</Link>
         </div>
         <div className="ml-auto flex items-center gap-2">
