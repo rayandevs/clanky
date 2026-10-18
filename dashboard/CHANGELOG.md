@@ -4,6 +4,11 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-alpha.8 · Scrapyard · 2026-10-18
+
+- Welcome card previews now show the exact Canvas image produced by the bot, updating as event settings change
+- Template colors, labels, custom backgrounds, avatar, and member details stay in sync between preview and sent card
+
 ## 0.1.0-alpha.7 · Scrapyard · 2026-10-18
 
 - Split Welcome administration into Join and Leave tabs with independent channels, formats, templates, custom backgrounds, and live previews

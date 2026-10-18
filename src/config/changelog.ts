@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.15',
+    date: '2026-10-18',
+    title: 'Welcome cards, in sync 👋',
+    highlights: [
+      'The dashboard preview now uses the same Canvas renderer as the bot, so template and background choices match the posted card',
+      'Corrected template colors and labels, and removed unsupported emoji glyphs from image text',
+      'Removed the optional attachment description that caused Discord to show an ALT overlay on cards',
+    ],
+  },
+  {
     version: '0.1.0-beta.14',
     date: '2026-10-18',
     title: 'A warmer welcome 👋',

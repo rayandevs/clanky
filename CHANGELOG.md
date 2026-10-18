@@ -4,6 +4,13 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.15] — 2026-10-18
+
+### Fixed
+- Dashboard card previews now use the exact Canvas renderer used for bot messages, including the selected template, uploaded background, accent, avatar options, and member details
+- Corrected the template palettes and event labels so Celebration, Minimal, and Soft look as configured
+- Removed unsupported emoji glyphs from Canvas text and removed the optional attachment description that made Discord show an ALT overlay
+
 ## [0.1.0-beta.14] — 2026-10-18
 
 ### Added

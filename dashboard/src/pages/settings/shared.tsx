@@ -71,7 +71,8 @@ export function TemplateInput({ value, onChange, placeholders, maxLength, testId
   );
 }
 
-function WelcomeCard({ artwork, artworkUrl, event, message }: { artwork: WelcomeArtwork; artworkUrl?: string; event: WelcomeEvent; message: string }) {
+function WelcomeCard({ artwork, artworkUrl, event, message, cardPreviewUrl }: { artwork: WelcomeArtwork; artworkUrl?: string; event: WelcomeEvent; message: string; cardPreviewUrl?: string }) {
+  if (cardPreviewUrl) return <img src={cardPreviewUrl} alt="" className="mb-3 block w-full rounded-lg border border-white/[0.12]" />;
   const style = {
     celebration: { background: 'linear-gradient(135deg, #5b2b11 0%, #c2571d 52%, #f5a742 100%)', eyebrow: 'A NEW MEMBER' },
     minimal: { background: 'linear-gradient(135deg, #20222a 0%, #353946 100%)', eyebrow: 'COMMUNITY UPDATE' },
@@ -99,7 +100,7 @@ function WelcomeCard({ artwork, artworkUrl, event, message }: { artwork: Welcome
 }
 
 /** Live preview of a Clanky message, including welcome event text and generated-card formats. */
-export function MessagePreview({ text, channel, accent, avatar, format = 'container', artwork, artworkUrl, event = 'join' }: {
+export function MessagePreview({ text, channel, accent, avatar, format = 'container', artwork, artworkUrl, event = 'join', cardPreviewUrl }: {
   text: string;
   channel: string;
   accent: string;
@@ -108,6 +109,7 @@ export function MessagePreview({ text, channel, accent, avatar, format = 'contai
   artwork?: WelcomeArtwork;
   artworkUrl?: string;
   event?: WelcomeEvent;
+  cardPreviewUrl?: string;
 }) {
   const hasCard = (format === 'text_image' || format === 'image_only') && artwork;
   const message = avatar && format === 'container'
@@ -120,8 +122,8 @@ export function MessagePreview({ text, channel, accent, avatar, format = 'contai
         <Message time="Today at 9:41 AM">
           {format === 'container' && <Container accent={accent}>{message}</Container>}
           {format === 'text' && message}
-          {format === 'text_image' && <>{message}{hasCard && <WelcomeCard artwork={artwork} artworkUrl={artworkUrl} event={event} message="" />}</>}
-          {format === 'image_only' && hasCard && <WelcomeCard artwork={artwork} artworkUrl={artworkUrl} event={event} message={text} />}
+          {format === 'text_image' && <>{message}{hasCard && <WelcomeCard artwork={artwork} artworkUrl={artworkUrl} event={event} message="" cardPreviewUrl={cardPreviewUrl} />}</>}
+          {format === 'image_only' && hasCard && <WelcomeCard artwork={artwork} artworkUrl={artworkUrl} event={event} message={text} cardPreviewUrl={cardPreviewUrl} />}
         </Message>
       </DiscordWindow>
     </div>

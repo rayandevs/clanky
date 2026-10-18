@@ -63,7 +63,7 @@ export async function welcomeMessage(
     background,
   });
   const filename = `${kind}-welcome.png`;
-  const file = new AttachmentBuilder(image, { name: filename }).setDescription(`${kind === 'join' ? 'Welcome' : 'Farewell'} card for ${member.displayName} in ${member.guild.name}.`);
+  const file = new AttachmentBuilder(image, { name: filename });
   return {
     ...(config.format === 'text_image' ? { content: body } : {}),
     files: [file],

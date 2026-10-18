@@ -7,7 +7,7 @@ import { BrandSpinner, ModuleSwitch, Panel, SaveBar, settingsKey, useDraft, useG
 import { ChannelPicker, MultiChannelPicker, RolePicker, SingleRolePicker } from '@/components/pickers';
 import { useToast } from '@/components/Toast';
 import { Button, Emoji, Field, Input, Segmented, Slider, Switch, Textarea } from '@/components/ui';
-import { api, ApiError, queryClient, uploadWelcomeArtwork, welcomeArtworkUrl } from '@/lib/api';
+import { api, ApiError, queryClient, renderWelcomePreview, uploadWelcomeArtwork, welcomeArtworkUrl } from '@/lib/api';
 import { useMeta } from '@/lib/hooks';
 import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKind, type SectionId, type SettingsPayload, type WelcomeEvent, type WelcomeEventSettings } from '@/lib/types';
 import { cn, DEMO, hex, MODULE_EMOJI } from '@/lib/utils';
@@ -292,6 +292,8 @@ type WelcomeEventEditorProps = {
 
 function WelcomeEventEditor({ event, settings, joinChannelId, channels, accent, guildId, artworkUrl, artworkVersion, hasSavedCustomArtwork, uploading, onChange, onUploadArtwork }: WelcomeEventEditorProps) {
   const isJoin = event === 'join';
+  const [cardPreviewUrl, setCardPreviewUrl] = useState<string>();
+  const previewUrlRef = useRef<string | null>(null);
   const selectedChannelId = isJoin || settings.channelId !== null ? settings.channelId : joinChannelId;
   const channel = channels.find((item) => item.id === selectedChannelId)?.name ?? (isJoin ? 'welcome' : 'join channel');
   const overrideChannelId = joinChannelId ?? channels.find((item) => item.canSend)?.id ?? null;
@@ -304,7 +306,51 @@ function WelcomeEventEditor({ event, settings, joinChannelId, channels, accent, 
     '{server}': 'your server',
     '{count}': '1,285',
   });
+  const imagePreviewMessage = settings.format === 'image_only' ? previewText.replaceAll('@Juno', 'Juno') : '';
+  const previewKey = JSON.stringify({ settings, imagePreviewMessage, artworkVersion });
   const customArtwork = settings.artwork.background === 'custom';
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
+
+  useEffect(() => {
+    const releasePreview = () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+      setCardPreviewUrl(undefined);
+    };
+    if (!usesWelcomeArtwork(settings.format) || DEMO) {
+      releasePreview();
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void renderWelcomePreview(guildId, event, settings, imagePreviewMessage, controller.signal)
+        .then((blob) => {
+          if (!blob) return;
+          const nextUrl = URL.createObjectURL(blob);
+          if (cancelled) {
+            URL.revokeObjectURL(nextUrl);
+            return;
+          }
+          const previousUrl = previewUrlRef.current;
+          previewUrlRef.current = nextUrl;
+          setCardPreviewUrl(nextUrl);
+          if (previousUrl) URL.revokeObjectURL(previousUrl);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) releasePreview();
+        });
+    }, 180);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [guildId, event, previewKey]);
 
   return (
     <>
@@ -338,7 +384,7 @@ function WelcomeEventEditor({ event, settings, joinChannelId, channels, accent, 
             <Switch checked={settings.includeBots} onChange={(includeBots) => onChange({ includeBots })} label="Include bot members" testId={`switch-welcome-bots-${event}`} />
           </Field>
         </Panel>
-        <MessagePreview text={previewText} channel={channel} accent={accent} avatar={settings.artwork.showAvatar} format={settings.format} artwork={settings.artwork} artworkUrl={customArtworkUrl} event={event} />
+        <MessagePreview text={previewText} channel={channel} accent={accent} avatar={settings.artwork.showAvatar} format={settings.format} artwork={settings.artwork} artworkUrl={customArtworkUrl} event={event} cardPreviewUrl={cardPreviewUrl} />
       </div>
       {usesWelcomeArtwork(settings.format) && (
         <Panel title={`${isJoin ? 'Join' : 'Leave'} card artwork`} description="Generated cards can use a built-in look or a server-specific background.">

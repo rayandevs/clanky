@@ -5,7 +5,7 @@ import { WelcomeArtworkModel } from '../src/database/models/index.js';
 import { fillTemplate, welcomeMessage } from '../src/modules/welcome/render.js';
 import { defaultGuildSettings, parseGuildSettings } from '../src/settings/schema.js';
 import { normalizeUploadedImage, UploadedImageError } from '../src/render/imageUpload.js';
-import { renderWelcomeCard } from '../src/render/welcomeCard.js';
+import { cleanWelcomeCardText, renderWelcomeCard, type WelcomeCardData } from '../src/render/welcomeCard.js';
 import { wrapText } from '../src/render/canvas.js';
 import type { PartialGuildMember } from 'discord.js';
 
@@ -64,6 +64,10 @@ test('welcome placeholders support server display names and can render without a
   assert.equal(fillTemplate(template, member, false), 'Welcome Juno (juno/Juno) to Example Server; member 1,285');
 });
 
+test('Canvas card text removes emoji glyphs unsupported by the bundled font', () => {
+  assert.equal(cleanWelcomeCardText('Welcome 🎉 OwO 👋'), 'Welcome OwO');
+});
+
 test('welcome payload builder emits the selected text and card formats with controlled mentions', async () => {
   const settings = defaultGuildSettings();
   settings.welcome.join.message = 'Hello {user}';
@@ -78,6 +82,7 @@ test('welcome payload builder emits the selected text and card formats with cont
   const withImage = await welcomeMessage(member, settings, 'join');
   assert.equal(withImage.content, 'Hello <@12345678901234567>');
   assert.equal(withImage.files?.length, 1);
+  assert.ok(!withImage.files?.[0]?.description);
 
   settings.welcome.join.format = 'image_only';
   const imageOnly = await welcomeMessage(member, settings, 'join');
@@ -102,7 +107,7 @@ test('welcome artwork has a unique per-guild, per-event record and Canvas cards 
   assert.ok(WelcomeArtworkModel.schema.path('data'));
   assert.ok(WelcomeArtworkModel.schema.indexes().some(([keys, options]) => keys.guildId === 1 && keys.event === 1 && options.unique === true));
 
-  const card = await renderWelcomeCard({
+  const cardData = {
     event: 'join',
     template: 'minimal',
     accent: 0x7857ff,
@@ -114,7 +119,10 @@ test('welcome artwork has a unique per-guild, per-event record and Canvas cards 
     showAvatar: false,
     showMemberCount: true,
     showServerName: true,
-  });
+  } satisfies WelcomeCardData;
+  const card = await renderWelcomeCard(cardData);
+  const celebration = await renderWelcomeCard({ ...cardData, template: 'celebration' });
+  assert.notDeepEqual(celebration, card);
   const image = await loadImage(card);
   assert.equal(image.width, 1000);
   assert.equal(image.height, 300);

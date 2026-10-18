@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-alpha.8",
+    "date": "2026-10-18",
+    "title": "Welcome cards, in sync",
+    "highlights": [
+      "Welcome card previews now use the same Canvas renderer as the bot, so template, background, avatar and layout choices match the posted image",
+      "Template palettes and event labels match Celebration, Minimal and Soft settings",
+      "Canvas text no longer shows unsupported emoji glyphs"
+    ]
+  },
+  {
     "version": "0.1.0-alpha.7",
     "date": "2026-10-18",
     "title": "A warmer welcome",

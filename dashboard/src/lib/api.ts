@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { WelcomeEvent } from './types';
+import type { WelcomeEvent, WelcomeEventSettings } from './types';
 import { DEMO } from './utils';
 
 export class ApiError extends Error {
@@ -51,6 +51,24 @@ async function uploadArtwork(path: string, file: File): Promise<{ ok: true; widt
 
 export const uploadTicketArtwork = (guildId: string, panelId: string, file: File) => uploadArtwork(`/api/guilds/${guildId}/tickets/panels/${panelId}/artwork`, file);
 export const uploadWelcomeArtwork = (guildId: string, event: WelcomeEvent, file: File) => uploadArtwork(`/api/guilds/${guildId}/welcome/${event}/artwork`, file);
+
+/** Render a Welcome preview through the same Canvas code the bot uses. */
+export async function renderWelcomePreview(guildId: string, event: WelcomeEvent, settings: WelcomeEventSettings, message: string, signal?: AbortSignal): Promise<Blob | null> {
+  if (DEMO) return null;
+  const response = await fetch(`/api/guilds/${guildId}/welcome/${event}/preview`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { Accept: 'image/png', 'Content-Type': 'application/json', 'X-Clanky': '1' },
+    body: JSON.stringify({ settings, message }),
+    signal,
+  });
+  if (response.status === 401) void queryClient.invalidateQueries({ queryKey: ['/api/me'] });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+    throw new ApiError(response.status, data.message ?? 'Could not render the welcome-card preview.', data.error);
+  }
+  return response.blob();
+}
 
 /** URL of the most recently uploaded welcome-card background for an event. */
 export const welcomeArtworkUrl = (guildId: string, event: WelcomeEvent, version = 0) => `/api/guilds/${guildId}/welcome/${event}/artwork?v=${version}`;

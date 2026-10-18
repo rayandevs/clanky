@@ -49,8 +49,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.14', label: 'v0.1.0 Beta 14', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-alpha.7', label: 'v0.1.0 Alpha 7', codename: 'Scrapyard' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.15', label: 'v0.1.0 Beta 15', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-alpha.8', label: 'v0.1.0 Alpha 8', codename: 'Scrapyard' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -220,6 +220,7 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.15', date: '2026-10-18', title: 'Welcome cards, in sync 👋', highlights: ['Dashboard previews use the same Canvas renderer as bot messages', 'Template colors and labels now match their names', 'Clean card text and no Discord ALT overlay'] },
     { version: '0.1.0-beta.14', date: '2026-10-18', title: 'A warmer welcome 👋', highlights: ['Configure independent join and leave messages, channels, and formats', 'Customize generated member cards with presets or uploaded backgrounds', 'Control mentions, bot greetings, and screening-delayed welcome messages'] },
     { version: '0.1.0-beta.13', date: '2026-10-18', title: 'Clearer suggestion cards 💡', highlights: ['Give suggestion details, status, category, and author more room to breathe', 'Simplify vote controls by removing duplicate counts and the redundant progress display'] },
     { version: '0.1.0-beta.12', date: '2026-10-17', title: 'Ideas that move 💡', highlights: ['Review suggestions in Discord or a searchable dashboard queue with status history and notes', 'Organize submissions with categories, anonymity choices, limits and cooldowns', 'Author updates, reviewer digests and recovery for failed Discord posts'] },
@@ -233,6 +234,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-alpha.8', date: '2026-10-18', title: 'Welcome cards, in sync', highlights: ['See the exact Canvas card image Clanky will send', 'Preview updates match template, background, avatar and member details'] },
     { version: '0.1.0-alpha.7', date: '2026-10-18', title: 'A warmer welcome', highlights: ['Configure Join and Leave events separately with distinct formats and previews', 'Choose generated card templates or upload custom backgrounds', 'Control mentions, bots, avatars, member counts and screening-delayed greetings'] },
     { version: '0.1.0-alpha.6', date: '2026-10-17', title: 'Ideas that move', highlights: ['Search, filter and review suggestions from the dashboard', 'Inspect status history and vote trends, and recover failed Discord posts', 'Configure categories, limits, cooldowns, anonymity and reviewer digests'] },
     { version: '0.1.0-alpha.5', date: '2026-10-16', title: 'Clearer legal docs', highlights: ["Read Clanky's Privacy Policy and Terms of Service on public dashboard pages", 'Find both documents from footer links, with a shared layout matching the dashboard', 'Policies explain self-hosted operation, data handling, retention and deletion scope'] },

@@ -13,7 +13,8 @@ import { SuggestionActionError, publishSuggestion, reviewSuggestion, SUGGESTION_
 import { isSuggestionAnonymous } from '../../modules/suggestions/privacy.js';
 import { normalizeUploadedImage, UploadedImageError } from '../../render/imageUpload.js';
 import { MODULES } from '../../settings/registry.js';
-import { GuildSettingsSchema, type GuildSettings, type SettingsSection } from '../../settings/schema.js';
+import { GuildSettingsSchema, WelcomeEventSettings, type GuildSettings, type SettingsSection } from '../../settings/schema.js';
+import { renderWelcomeCard } from '../../render/welcomeCard.js';
 import { canManage, inviteUrl, managedGuild } from '../access.js';
 import { AuthError, requireUser } from '../auth.js';
 import { discordApi, DiscordHttpError } from '../discord.js';
@@ -25,6 +26,7 @@ const SECTIONS = Object.keys(GuildSettingsSchema.shape) as SettingsSection[];
 const DAY = 86_400_000;
 const TRANSCRIPT_PAGE_SIZE = 20;
 const TRANSCRIPT_MESSAGE_PAGE_SIZE = 50;
+const welcomePreviewRequest = z.object({ settings: WelcomeEventSettings.extend({ message: z.string().max(1000) }), message: z.string().max(1000).default('') });
 
 const iconUrl = (id: string, icon: string | null) => (icon ? `https://cdn.discordapp.com/icons/${id}/${icon}.${icon.startsWith('a_') ? 'gif' : 'png'}?size=128` : null);
 
@@ -615,6 +617,38 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
       { upsert: true, returnDocument: 'after' },
     );
     return { ok: true, contentType: 'image/png', width: normalized.width, height: normalized.height };
+  });
+
+  app.post('/api/guilds/:guildId/welcome/:event/preview', async (request, reply) => {
+    const access = await managedGuild(client, request, reply);
+    if (!access) return;
+    const event = (request.params as { event: string }).event;
+    if (event !== 'join' && event !== 'leave') return reply.code(400).send({ error: 'invalid', message: 'Choose a join or leave preview.' });
+    const input = welcomePreviewRequest.safeParse(request.body);
+    if (!input.success) return reply.code(400).send({ error: 'invalid', message: 'Check the welcome-card preview settings.' });
+
+    let background: Buffer | null = null;
+    if (input.data.settings.artwork.background === 'custom') {
+      const asset = await WelcomeArtworkModel.findOne({ guildId: access.guild.id, event }).lean();
+      if (!asset) return reply.code(404).send({ error: 'not_found', message: 'Upload a custom background before previewing it.' });
+      background = Buffer.from(asset.data);
+    }
+    const guildSettings = await guilds.settings(access.guild.id);
+    const image = await renderWelcomeCard({
+      event,
+      template: input.data.settings.artwork.template,
+      accent: guildSettings.general.accentColor,
+      displayName: 'Juno',
+      avatarUrl: '',
+      serverName: access.guild.name,
+      memberCount: access.guild.memberCount,
+      message: input.data.settings.format === 'image_only' ? input.data.message.replaceAll('@Juno', 'Juno') : '',
+      showAvatar: input.data.settings.artwork.showAvatar,
+      showMemberCount: input.data.settings.artwork.showMemberCount,
+      showServerName: input.data.settings.artwork.showServerName,
+      background,
+    });
+    return reply.type('image/png').header('Cache-Control', 'private, no-store').send(image);
   });
 
   app.get('/api/guilds/:guildId/welcome/:event/artwork', async (request, reply) => {
