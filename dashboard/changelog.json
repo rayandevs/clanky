@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-beta.3",
+    "date": "2026-10-19",
+    "title": "Save controls, always at hand",
+    "highlights": [
+      "Keep Save and Reset visible in a fixed side panel while you work through settings",
+      "Collapse the panel to a small animated side tab and reopen it whenever you need the controls",
+      "The panel stays tucked away until the changes are saved or reset"
+    ]
+  },
+  {
     "version": "0.1.0-beta.2",
     "date": "2026-10-19",
     "title": "Help, without the hunt",

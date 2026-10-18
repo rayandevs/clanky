@@ -11,6 +11,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.18',
+    date: '2026-10-19',
+    title: 'Unsaved edits, in sight',
+    highlights: [
+      'Keep unsaved settings visible in a fixed side panel while you scroll through a server page',
+      'Collapse the panel to a small side tab while editing, then save or reset when you are ready',
+    ],
+  },
+  {
     version: '0.1.0-beta.17',
     date: '2026-10-19',
     title: 'A guide for every step',

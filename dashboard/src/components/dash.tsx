@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
-import { Lock, RotateCcw } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, Lock, RotateCcw } from 'lucide-react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiError, queryClient } from '@/lib/api';
 import { useLogin, useMe } from '@/lib/hooks';
 import type { GuildSettings, SectionId, SettingsPayload } from '@/lib/types';
@@ -155,25 +155,58 @@ export function useDraft<S extends SectionId>(guildId: string, section: S, saved
 }
 
 export function SaveBar({ dirty, saving, onSave, onReset }: { dirty: boolean; saving: boolean; onSave: () => void; onReset: () => void }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const panelId = useId();
+
+  useEffect(() => {
+    if (!dirty) setCollapsed(false);
+  }, [dirty]);
+
   return (
     <AnimatePresence>
       {dirty && (
         <motion.div
-          initial={{ y: 90, opacity: 0, scale: 0.96 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 90, opacity: 0, scale: 0.96 }}
-          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-          className="fixed inset-x-0 bottom-5 z-40 flex justify-center px-4"
+          initial={{ x: 48, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 48, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+          className="pointer-events-none fixed inset-y-0 right-0 z-50 flex items-center"
         >
-          <div className="glass glass-strong flex w-full max-w-xl items-center gap-3 rounded-2xl py-2.5 pl-5 pr-2.5" data-testid="savebar">
-            <span className="size-2 animate-pulse rounded-full bg-hazard" />
-            <p className="flex-1 text-[14px] font-medium">You have unsaved changes</p>
-            <Button variant="ghost" size="sm" onClick={onReset} disabled={saving} data-testid="button-reset">
-              <RotateCcw className="size-3.5" /> Reset
-            </Button>
-            <Button variant="primary" size="sm" onClick={onSave} loading={saving} data-testid="button-save">
-              Save changes
-            </Button>
+          <div
+            className="pointer-events-auto w-[min(360px,calc(100vw-12px))] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ transform: collapsed ? 'translateX(calc(100% - 48px))' : 'translateX(0)' }}
+          >
+            <div className="glass glass-strong flex overflow-hidden rounded-l-2xl rounded-r-none border-r-0 shadow-[-18px_0_44px_-28px_rgb(0_0_0/0.8)]" data-testid="savebar">
+              <button
+                type="button"
+                onClick={() => setCollapsed((value) => !value)}
+                className="grid w-12 shrink-0 place-items-center border-r border-line text-muted transition-colors hover:bg-white/[0.06] hover:text-text focus-visible:z-10"
+                aria-label={collapsed ? 'Show unsaved changes' : 'Collapse unsaved changes'}
+                aria-expanded={!collapsed}
+                aria-controls={panelId}
+                title={collapsed ? 'Show unsaved changes' : 'Collapse to the side'}
+                data-testid="button-collapse-savebar"
+              >
+                {collapsed ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+              </button>
+              <div id={panelId} className="min-w-0 flex-1 p-4" aria-hidden={collapsed} inert={collapsed}>
+                <div className="flex items-start gap-3">
+                  <span className="mt-1.5 size-2 shrink-0 animate-pulse rounded-full bg-hazard" />
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-bold">Unsaved changes</p>
+                    <p className="mt-1 text-[12px] leading-5 text-muted">Save to apply your edits, or reset to discard them.</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Button variant="ghost" size="sm" className="w-full" onClick={onReset} disabled={saving} data-testid="button-reset">
+                    <RotateCcw className="size-3.5" /> Reset
+                  </Button>
+                  <Button variant="primary" size="sm" className="w-full" onClick={onSave} loading={saving} data-testid="button-save">
+                    Save changes
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
       )}

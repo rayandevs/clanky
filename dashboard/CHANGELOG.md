@@ -4,6 +4,11 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-beta.3 · Rench · 2026-10-19
+
+- Kept Save and Reset controls in view in a fixed side panel while editing server settings
+- Added an animated collapse-to-side-tab control; the panel stays tucked away until edits are saved or reset
+
 ## 0.1.0-beta.2 · Rench · 2026-10-19
 
 - Added a searchable Help Center inside the dashboard, with guides for core bot features, server setup, and dashboard workflows

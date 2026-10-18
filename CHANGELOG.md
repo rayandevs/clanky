@@ -4,6 +4,17 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.18] — 2026-10-19
+
+### Improved
+- Moved unsaved settings controls to a fixed, always-visible side panel
+- Added an animated collapse-to-tab control that stays tucked away until changes are saved or reset
+
+## Dashboard 0.1.0-beta.3 — 2026-10-19
+
+### Improved
+- Kept Save and Reset controls in view while editing dashboard settings, with an accessible animated side-tab collapse
+
 ## [0.1.0-beta.17] — 2026-10-19
 
 ### Added

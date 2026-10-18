@@ -2,7 +2,7 @@
 
 A multipurpose Discord bot for **community management, moderation and engagement** — built with the newest Discord features and set up entirely from Discord.
 
-> **Version:** `0.1.0-beta.17` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
+> **Version:** `0.1.0-beta.18` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
 
 - **Slash commands only.** No prefixes, no message commands.
 - **Components V2 everywhere.** Every message uses Containers, Sections, Text Displays, Separators and File components. No embeds.
