@@ -4,6 +4,12 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-beta.5 · Rench · 2026-10-21
+
+- Expanded the Logging guide with clear setup steps, event categories, channel routing, exclusions, and default settings
+- Explained message and attachment privacy, reader access, retention choices, risk signals, and the limits of evidence hashes
+- Added practical Incident Center instructions for searching records, reviewing incidents, retrying delivery, and fixing missing logs
+
 ## 0.1.0-beta.4 · Rench · 2026-10-20
 
 - Added an Incident Center for grouped risk signals, chronological event timelines, affected-object references, review notes, and status updates

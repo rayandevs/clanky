@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-beta.5",
+    "date": "2026-10-21",
+    "title": "Logging, clearly explained",
+    "highlights": [
+      "Follow a detailed guide to configure event types, channel routing, exclusions, privacy, and retention",
+      "Understand how incident signals are grouped, what evidence hashes can and cannot prove, and who can view sensitive details",
+      "Search and review incidents, retry failed deliveries, and troubleshoot missing records with step-by-step instructions"
+    ]
+  },
+  {
     "version": "0.1.0-beta.4",
     "date": "2026-10-20",
     "title": "A closer look at incidents",

@@ -95,7 +95,7 @@ const MODULES: Meta['modules'] = [
 
 const meta: Meta = {
   bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.19', label: 'v0.1.0 Beta 19', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-beta.4', label: 'v0.1.0 Beta 4', codename: 'Rench' } },
+  dashboard: { version: { raw: '0.1.0-beta.5', label: 'v0.1.0 Beta 5', codename: 'Rench' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -299,6 +299,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-beta.5', date: '2026-10-21', title: 'Logging, clearly explained', highlights: ['Expanded the Logging guide with setup, event categories, routing, exclusions, and defaults', 'Explained evidence privacy, access roles, retention, risk signals, and what integrity hashes can and cannot tell you', 'Added step-by-step incident review, delivery retry guidance, permission checks, and troubleshooting'] },
     { version: '0.1.0-beta.4', date: '2026-10-20', title: 'A closer look at incidents', highlights: ['Review grouped alerts in one incident timeline with affected objects and moderator actions', 'Search and filter activity, check evidence integrity, and retry log messages Discord could not deliver', 'Control who can view logs or sensitive message evidence in server Logging settings'] },
     { version: '0.1.0-beta.3', date: '2026-10-19', title: 'Save controls, always at hand', highlights: ['Keep Save and Reset visible in a fixed side panel while you work through settings', 'Collapse the panel to a small animated side tab and reopen it whenever you need the controls', 'The panel stays tucked away until the changes are saved or reset'] },
     { version: '0.1.0-beta.2', date: '2026-10-19', title: 'Help, without the hunt', highlights: ['Browse friendly guides for getting started, dashboard settings, and Clanky’s bot features', 'Search guide text and topics instantly, jump between sections, and share direct links to individual guides', 'Step-by-step cards, quick tips, related guides, and keyboard search make answers easier to follow', 'Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen'] },

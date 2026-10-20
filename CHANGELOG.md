@@ -4,6 +4,11 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## Dashboard 0.1.0-beta.5 — 2026-10-21
+
+### Documentation
+- Expanded the searchable Help Center guide for Logging and incident review with setup, privacy, detection, evidence, delivery, and troubleshooting instructions
+
 ## [0.1.0-beta.19] — 2026-10-20
 
 ### Added

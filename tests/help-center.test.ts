@@ -37,6 +37,9 @@ test('Help Center search text includes practical phrases from guide body copy an
   assert.match(textFor('leveling-and-ranks'), /cooldown/);
   assert.match(textFor('common-fixes'), /commands missing/);
   assert.match(textFor('logging-and-change-history'), /not proof of misconduct/);
+  assert.match(textFor('logging-and-change-history'), /three or more channel deletions/);
+  assert.match(textFor('logging-and-change-history'), /sensitive-evidence readers/);
+  assert.match(textFor('logging-and-change-history'), /no channel/);
 });
 
 test('Help Center search ranks exact guide titles and filters by topic', () => {
@@ -47,5 +50,7 @@ test('Help Center search ranks exact guide titles and filters by topic', () => {
   assert.ok(communityResults.some((article) => article.slug === 'tickets'));
   assert.ok(communityResults.every((article) => article.category === 'community'));
   assert.ok(searchHelpArticles('incident evidence', 'safety').some((article) => article.slug === 'logging-and-change-history'));
+  assert.ok(searchHelpArticles('message content intent', 'safety').some((article) => article.slug === 'logging-and-change-history'));
+  assert.ok(searchHelpArticles('retry delivery', 'safety').some((article) => article.slug === 'logging-and-change-history'));
   assert.equal(searchHelpArticles('no matching guide phrase').length, 0);
 });
