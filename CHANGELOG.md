@@ -4,6 +4,15 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.19] — 2026-10-20
+
+### Added
+- Searchable server activity records with event identifiers, tamper-evident hashes, category routing, and configurable retention
+- Group rapid channel deletions, ban bursts, permission changes, and new-account link bursts into reviewable incidents
+- Incident timelines, affected members/channels/roles, moderator attribution, review notes, and delivery retry controls
+- Granular privacy controls for message content, attachments, excluded channels/roles, and separate log-reader and sensitive-evidence roles
+- Retry failed Discord log delivery with a durable queue; role alerts are restricted to configured roles and sent once per incident alert window
+
 ## [0.1.0-beta.18] — 2026-10-19
 
 ### Improved

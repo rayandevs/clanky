@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
 import { motion } from 'motion/react';
-import { ChevronsUpDown, FileText, History, LayoutGrid } from 'lucide-react';
+import { ChevronsUpDown, FileText, History, LayoutGrid, ShieldAlert } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
 import { BrandSpinner, EmptyState, ModuleSwitch, Panel, RequireLogin, useGuildSettings } from '@/components/dash';
@@ -15,6 +15,7 @@ import { ago, cn, MODULE_EMOJI, n } from '@/lib/utils';
 const SettingsPage = lazy(() => import('./settings/SettingsPage'));
 const HistoryPage = lazy(() => import('./settings/History'));
 const TicketTranscriptsPage = lazy(() => import('./TicketTranscripts'));
+const IncidentCenterPage = lazy(() => import('./IncidentCenter'));
 
 export const SECTIONS: Array<{ id: SectionId; name: string; emoji: string }> = [
   { id: 'general', name: 'General', emoji: '⚙️' },
@@ -46,7 +47,7 @@ function ServerSwitcher({ current }: { current: Overview['guild'] }) {
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={8} className="glass glass-strong z-50 w-[var(--radix-dropdown-menu-trigger-width)] rounded-2xl p-1.5 data-[state=open]:animate-[pop_.22s_var(--ease-out-expo)]">
           {data?.filter((g) => g.botIn).map((g) => (
-            <DropdownMenu.Item key={g.id} onSelect={() => navigate(`/dashboard/${g.id}`)} className={cn('flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-[14px] outline-none data-[highlighted]:bg-white/[0.07]', g.id === current.id && 'text-rust-300')}>
+            <DropdownMenu.Item key={g.id} onSelect={() => navigate(g.access === 'logs' ? `/dashboard/${g.id}/incidents` : `/dashboard/${g.id}`)} className={cn('flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-[14px] outline-none data-[highlighted]:bg-white/[0.07]', g.id === current.id && 'text-rust-300')}>
               <Avatar src={g.icon} name={g.name} className="size-7 rounded-lg text-[11px]" />
               <span className="truncate">{g.name}</span>
             </DropdownMenu.Item>
@@ -99,6 +100,7 @@ function Sidebar({ guild, active }: { guild: Overview['guild']; active: string }
         <p className="stamp hidden px-3 pb-1 pt-4 !text-[10px] text-faint lg:block">Server</p>
         {item(`/dashboard/${guild.id}/history`, active === 'history', <><History className="size-[18px] text-faint" /> Change history</>, 'nav-history')}
         {item(`/dashboard/${guild.id}/transcripts`, active === 'transcripts', <><FileText className="size-[18px] text-faint" /> Ticket transcripts</>, 'nav-ticket-transcripts')}
+        {item(`/dashboard/${guild.id}/incidents`, active === 'incidents', <><ShieldAlert className="size-[18px] text-faint" /> Incident center</>, 'nav-incident-center')}
       </nav>
     </Glass>
   );
@@ -332,7 +334,7 @@ export default function Guild() {
   const activeSection = section.split('?')[0] ?? '';
   return (
     <RequireLogin next={location}>
-      {activeSection === 'transcripts' ? <TicketTranscriptsPage guildId={guildId} /> : <GuildArea />}
+      {activeSection === 'transcripts' ? <TicketTranscriptsPage guildId={guildId} /> : activeSection === 'incidents' ? <IncidentCenterPage guildId={guildId} /> : <GuildArea />}
     </RequireLogin>
   );
 }

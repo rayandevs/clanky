@@ -4,6 +4,13 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-beta.4 · Rench · 2026-10-20
+
+- Added an Incident Center for grouped risk signals, chronological event timelines, affected-object references, review notes, and status updates
+- Search and filter activity records, inspect integrity checks, and retry logs Discord could not deliver
+- Separate log readers from sensitive-evidence readers, with message-content and attachment details hidden from unauthorized roles
+- Refined affected member, channel, role, and actor references into readable chips with direct Discord links where available
+
 ## 0.1.0-beta.3 · Rench · 2026-10-19
 
 - Kept Save and Reset controls in view in a fixed side panel while editing server settings

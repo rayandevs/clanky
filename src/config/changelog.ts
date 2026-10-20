@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.19',
+    date: '2026-10-20',
+    title: 'A clearer view of server activity',
+    highlights: [
+      'Search a durable activity timeline, group related high-risk signals into incidents, and review their affected members, channels, roles, and moderator actions',
+      'Choose where each event category is sent, how long records are kept, and which roles can view logs or sensitive message evidence',
+      'Retry failed Discord log delivery, review integrity checks, and send role alerts only for the first qualifying incident signal',
+    ],
+  },
+  {
     version: '0.1.0-beta.18',
     date: '2026-10-19',
     title: 'Unsaved edits, in sight',

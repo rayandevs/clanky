@@ -29,10 +29,12 @@ const TRANSCRIPT_MESSAGE_PAGE_SIZE = 50;
 const welcomePreviewRequest = z.object({ settings: WelcomeEventSettings.extend({ message: z.string().max(1000) }), message: z.string().max(1000).default('') });
 
 const iconUrl = (id: string, icon: string | null) => (icon ? `https://cdn.discordapp.com/icons/${id}/${icon}.${icon.startsWith('a_') ? 'gif' : 'png'}?size=128` : null);
+const loggerAccessCache = new Map<string, { access: 'logs' | null; expiresAt: number }>();
 
 /** Permissions each module needs to work well. Shown as setup tips. */
 const NEEDED: Array<{ flag: bigint; name: string; why: string }> = [
   { flag: PermissionFlagsBits.ManageGuild, name: 'Manage Server', why: 'AutoMod rules' },
+  { flag: PermissionFlagsBits.ViewAuditLog, name: 'View Audit Log', why: 'moderator attribution and server-change logs' },
   { flag: PermissionFlagsBits.ModerateMembers, name: 'Timeout Members', why: 'Timeouts' },
   { flag: PermissionFlagsBits.KickMembers, name: 'Kick Members', why: 'Kicks' },
   { flag: PermissionFlagsBits.BanMembers, name: 'Ban Members', why: 'Bans' },
@@ -97,6 +99,16 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$
 
 /** Every channel/role ID in a section must exist in the server. */
 function checkIds(guild: Guild, section: SettingsSection, value: unknown): string | null {
+  if (section === 'logging' && value && typeof value === 'object') {
+    const logging = value as Partial<GuildSettings['logging']>;
+    const configuredRoles = [
+      ...(logging.ignoredRoleIds ?? []),
+      ...(logging.alertRoleIds ?? []),
+      ...(logging.viewerRoleIds ?? []),
+      ...(logging.sensitiveEvidenceRoleIds ?? []),
+    ];
+    if (configuredRoles.includes(guild.id)) return 'The @everyone role cannot be used for logger access, exclusions or alerts.';
+  }
   const bad: string[] = [];
   const walk = (node: unknown, key: string) => {
     if (Array.isArray(node)) return node.forEach((v) => walk(v, key));
@@ -112,17 +124,40 @@ function checkIds(guild: Guild, section: SettingsSection, value: unknown): strin
 export async function guildRoutes(app: FastifyInstance, client: Clanky) {
   app.addHook('preHandler', requireUser);
 
-  /** Servers the user can manage, with or without Clanky. */
+  /** Servers the user can manage, plus bot servers where they have a configured logger-viewer role. */
   app.get('/api/guilds', async (request, reply) => {
     const session = request.session!;
     const fresh = (request.query as { fresh?: string }).fresh === '1';
     try {
       const list = await discordApi.guilds(session.record.userId, await session.accessToken(), fresh);
-      return list
-        .filter(canManage)
-        .map((g) => {
+      const candidates = list.filter((g) => canManage(g) || client.guilds.cache.has(g.id));
+      const visible: Array<{ id: string; name: string; icon: string | null; owner: boolean; botIn: boolean; memberCount: number | null; inviteUrl: string | null; access: 'manage' | 'logs' }> = [];
+      let cursor = 0;
+      await Promise.all(Array.from({ length: Math.min(5, candidates.length) }, async () => {
+        while (cursor < candidates.length) {
+          const index = cursor++;
+          const g = candidates[index]!;
           const live = client.guilds.cache.get(g.id);
-          return {
+          const manages = canManage(g);
+          let access: 'manage' | 'logs' | null = manages ? 'manage' : null;
+          if (!access && live) {
+            const key = `${session.record.userId}:${g.id}`;
+            const cached = !fresh ? loggerAccessCache.get(key) : undefined;
+            if (cached && cached.expiresAt > Date.now()) access = cached.access;
+            else {
+              try {
+                const config = await guilds.settings(g.id);
+                const logReaderRoleIds = [...config.logging.viewerRoleIds, ...config.logging.sensitiveEvidenceRoleIds];
+                if (logReaderRoleIds.length) {
+                  const member = live.members.cache.get(session.record.userId) ?? await live.members.fetch(session.record.userId);
+                  if (logReaderRoleIds.some((roleId) => member.roles.cache.has(roleId))) access = 'logs';
+                }
+              } catch { /* a missing member or unavailable role check grants no access */ }
+              loggerAccessCache.set(key, { access, expiresAt: Date.now() + 30_000 });
+            }
+          }
+          if (!access) continue;
+          visible.push({
             id: g.id,
             name: g.name,
             icon: iconUrl(g.id, g.icon),
@@ -130,9 +165,15 @@ export async function guildRoutes(app: FastifyInstance, client: Clanky) {
             botIn: Boolean(live),
             memberCount: live?.memberCount ?? null,
             inviteUrl: live ? null : inviteUrl(g.id),
-          };
-        })
-        .sort((a, b) => Number(b.botIn) - Number(a.botIn) || a.name.localeCompare(b.name));
+            access,
+          });
+        }
+      }));
+      if (loggerAccessCache.size > 10_000) {
+        const now = Date.now();
+        for (const [key, value] of loggerAccessCache) if (value.expiresAt <= now) loggerAccessCache.delete(key);
+      }
+      return visible.sort((a, b) => Number(b.botIn) - Number(a.botIn) || a.name.localeCompare(b.name));
     } catch (error) {
       if (error instanceof AuthError || (error instanceof DiscordHttpError && error.status === 401)) throw new AuthError();
       log.warn('Could not load guild list', error);

@@ -13,8 +13,28 @@ export const snowflake = z.string().regex(/^\d{17,20}$/);
 const channel = snowflake.nullable().default(null);
 const roles = (max: number) => z.array(snowflake).max(max).default([]);
 
-export const LOG_EVENTS = ['messageDelete', 'messageEdit', 'memberJoin', 'memberLeave', 'memberRoles', 'nickname'] as const;
+export const LOG_EVENTS = [
+  'messageDelete', 'messageEdit', 'messageBulkDelete', 'suspiciousLinks',
+  'memberJoin', 'memberLeave', 'memberRoles', 'nickname',
+  'memberBan', 'memberUnban', 'memberKick',
+  'channelCreate', 'channelDelete', 'channelUpdate',
+  'roleCreate', 'roleDelete', 'roleUpdate',
+  'webhookCreate', 'webhookUpdate', 'webhookDelete',
+] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
+export const LOG_CATEGORIES = ['messages', 'members', 'moderation', 'server', 'integrations'] as const;
+export type LogCategory = (typeof LOG_CATEGORIES)[number];
+export const LOG_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
+export type LogSeverity = (typeof LOG_SEVERITIES)[number];
+
+const retentionDays = z.union([z.literal(0), z.literal(7), z.literal(30), z.literal(90), z.literal(180), z.literal(365)]);
+export const LogRetentionSettings = z.object({
+  messages: retentionDays.default(90),
+  members: retentionDays.default(90),
+  moderation: retentionDays.default(365),
+  server: retentionDays.default(90),
+  integrations: retentionDays.default(90),
+}).prefault({});
 
 export const GeneralSettings = z.object({
   accentColor: z.number().int().min(0).max(0xffffff).default(colors.brand),
@@ -34,7 +54,24 @@ export const LoggingSettings = z.object({
   enabled: z.boolean().default(false),
   channelId: channel,
   events: z.array(z.enum(LOG_EVENTS)).default([...LOG_EVENTS]),
+  categoryChannels: z.object({
+    messages: channel,
+    members: channel,
+    moderation: channel,
+    server: channel,
+    integrations: channel,
+  }).prefault({}),
   ignoredChannelIds: roles(25),
+  ignoredRoleIds: roles(25),
+  includeBots: z.boolean().default(false),
+  recordMessageContent: z.boolean().default(false),
+  recordAttachments: z.boolean().default(false),
+  detectionEnabled: z.boolean().default(true),
+  alertRoleIds: roles(25),
+  alertMinimumSeverity: z.enum(['medium', 'high', 'critical']).default('high'),
+  viewerRoleIds: roles(25),
+  sensitiveEvidenceRoleIds: roles(25),
+  retentionDays: LogRetentionSettings,
 });
 
 export const WelcomeArtworkSettings = z.object({

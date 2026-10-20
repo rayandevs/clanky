@@ -6,7 +6,7 @@ import { Link } from 'wouter';
 import { EmptyState, RequireLogin } from '@/components/dash';
 import { Glass } from '@/components/Glass';
 import { Eyebrow } from '@/components/Reveal';
-import { Avatar, Button, buttonClass, Skeleton } from '@/components/ui';
+import { Avatar, Badge, Button, buttonClass, Skeleton } from '@/components/ui';
 import { get } from '@/lib/api';
 import { useMe } from '@/lib/hooks';
 import type { GuildListItem } from '@/lib/types';
@@ -28,7 +28,7 @@ function ServerList() {
         <div>
           <Eyebrow>Dashboard</Eyebrow>
           <h1 className="mt-3 text-[clamp(2.2rem,4vw,3.2rem)] font-extrabold">Hey {me?.user.globalName ?? me?.user.username}, pick a server.</h1>
-          <p className="mt-2 text-[15px] text-muted">These are the servers where you can manage settings.</p>
+          <p className="mt-2 text-[15px] text-muted">Servers you manage, plus any server where a staff role lets you review logs.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => (setFresh(Date.now()), refetch())} loading={isFetching && !isLoading} data-testid="button-refresh-servers">
           <RefreshCw className="size-3.5" /> Refresh
@@ -53,7 +53,7 @@ function ServerList() {
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {withBot.map((g, i) => (
               <motion.div key={g.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
-                <Link href={`/dashboard/${g.id}`} data-testid={`card-server-${g.id}`} className="group block rounded-3xl">
+                <Link href={g.access === 'logs' ? `/dashboard/${g.id}/incidents` : `/dashboard/${g.id}`} data-testid={`card-server-${g.id}`} className="group block rounded-3xl">
                   <Glass interactive className="flex h-full items-center gap-4 rounded-3xl p-5">
                     <Avatar src={g.icon} name={g.name} className="size-14 rounded-2xl text-[18px]" />
                     <div className="min-w-0 flex-1">
@@ -62,6 +62,7 @@ function ServerList() {
                         {g.owner && <Crown className="size-3.5 shrink-0 text-hazard" aria-label="Owner" />}
                       </p>
                       <p className="text-[13px] text-muted">{g.memberCount ? `${n(g.memberCount)} members` : 'Clanky is here'}</p>
+                      {g.access === 'logs' && <Badge tone="info" className="mt-1">Logs only</Badge>}
                     </div>
                     <ArrowRight className="size-5 text-faint transition-all group-hover:translate-x-1 group-hover:text-rust-300" />
                   </Glass>

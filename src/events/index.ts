@@ -7,7 +7,8 @@ import { createLogger } from '../core/logger.js';
 import { routeInteraction } from '../core/router.js';
 import { watchAutomodToggle } from '../modules/automod/service.js';
 import { handleLevelingMessage } from '../modules/leveling/handler.js';
-import { logMemberJoin, logMemberLeave, logMemberUpdate, logMessageDelete, logMessageEdit } from '../modules/logging/index.js';
+import { detectSuspiciousLinks, logAuditEntry, logMemberJoin, logMemberLeave, logMemberUpdate, logMessageDelete, logMessageEdit, logMessagesBulkDelete } from '../modules/logging/index.js';
+import { startLoggerScheduler } from '../modules/logging/service.js';
 import { startReminderScheduler } from '../modules/reminders/index.js';
 import { handleMemberJoin, handleMemberLeave, handleMemberScreeningPassed } from '../modules/welcome/index.js';
 import { guilds, levels } from '../services/index.js';
@@ -63,6 +64,7 @@ export function registerEvents(client: Clanky): void {
       guilds.watchExternalChanges();
       watchAutomodToggle(client);
       startReminderScheduler(client);
+      startLoggerScheduler(client);
       await announceUpdate(client);
     }),
   );
@@ -84,13 +86,19 @@ export function registerEvents(client: Clanky): void {
     Events.MessageCreate,
     safe('messageCreate', async (message) => {
       // Track human-message activity first; XP eligibility is filtered separately below.
-      if (!message.inGuild() || message.author.bot || message.system || message.webhookId) return;
+      if (!message.inGuild()) return;
+      if (!message.author.bot && !message.system && !message.webhookId) {
+        void detectSuspiciousLinks(message).catch((error) => log.warn('Could not inspect message for link bursts', error));
+      }
+      if (message.author.bot || message.system || message.webhookId) return;
       await levels.recordMessage(message.guildId, message.author.id).catch((error) => log.warn('Could not record leveling activity', error));
       await handleLevelingMessage(message);
     }),
   );
   client.on(Events.MessageDelete, safe('messageDelete', logMessageDelete));
   client.on(Events.MessageUpdate, safe('messageUpdate', logMessageEdit));
+  client.on(Events.MessageBulkDelete, safe('messageDeleteBulk', (messages, channel) => logMessagesBulkDelete(messages.values(), channel)));
+  client.on(Events.GuildAuditLogEntryCreate, safe('auditLogEntryCreate', (entry, guild) => logAuditEntry(entry, guild)));
 
   client.on(
     Events.GuildMemberAdd,

@@ -9,7 +9,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Emoji, Field, Input, Segmented, Slider, Switch, Textarea } from '@/components/ui';
 import { api, ApiError, queryClient, renderWelcomePreview, uploadWelcomeArtwork, welcomeArtworkUrl } from '@/lib/api';
 import { useMeta } from '@/lib/hooks';
-import { LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogEvent, type RuleKind, type SectionId, type SettingsPayload, type WelcomeEvent, type WelcomeEventSettings } from '@/lib/types';
+import { LOG_CATEGORIES, LOG_EVENTS, RULE_KINDS, type GuildSettings, type LogCategory, type LogEvent, type RuleKind, type SectionId, type SettingsPayload, type WelcomeEvent, type WelcomeEventSettings } from '@/lib/types';
 import { cn, DEMO, hex, MODULE_EMOJI } from '@/lib/utils';
 import { MessagePreview, OffNotice, SectionHeader, TemplateInput, WordList } from './shared';
 import TicketsSettings from './TicketsSettings';
@@ -206,11 +206,38 @@ function Automod({ guildId, data }: Props) {
 const EVENT_INFO: Record<LogEvent, { emoji: string; label: string }> = {
   messageDelete: { emoji: '🗑️', label: 'Deleted messages' },
   messageEdit: { emoji: '📝', label: 'Edited messages' },
+  messageBulkDelete: { emoji: '🗑️', label: 'Bulk message deletes' },
+  suspiciousLinks: { emoji: '🔗', label: 'Suspicious link bursts' },
   memberJoin: { emoji: '📥', label: 'Members joining' },
   memberLeave: { emoji: '👋', label: 'Members leaving' },
   memberRoles: { emoji: '🎭', label: 'Role changes' },
   nickname: { emoji: '🏷️', label: 'Nickname changes' },
+  memberBan: { emoji: '🔨', label: 'Member bans' },
+  memberUnban: { emoji: '🔓', label: 'Member unbans' },
+  memberKick: { emoji: '👢', label: 'Member kicks' },
+  channelCreate: { emoji: '➕', label: 'Channel creations' },
+  channelDelete: { emoji: '🗑️', label: 'Channel deletions' },
+  channelUpdate: { emoji: '📝', label: 'Channel updates' },
+  roleCreate: { emoji: '➕', label: 'Role creations' },
+  roleDelete: { emoji: '🗑️', label: 'Role deletions' },
+  roleUpdate: { emoji: '🛡️', label: 'Role and permission updates' },
+  webhookCreate: { emoji: '🔌', label: 'Webhook creations' },
+  webhookUpdate: { emoji: '📝', label: 'Webhook updates' },
+  webhookDelete: { emoji: '🗑️', label: 'Webhook deletions' },
 };
+
+const LOG_CATEGORY_INFO: Record<LogCategory, { name: string; description: string }> = {
+  messages: { name: 'Messages', description: 'Message edits, deletions and link-burst signals.' },
+  members: { name: 'Members', description: 'Joins, leaves, role changes and nicknames.' },
+  moderation: { name: 'Moderation', description: 'Bans, unbans and kicks.' },
+  server: { name: 'Server changes', description: 'Channel and role changes.' },
+  integrations: { name: 'Integrations', description: 'Webhook changes.' },
+};
+
+const retentionChoices: Array<{ value: 0 | 7 | 30 | 90 | 180 | 365; label: string }> = [
+  { value: 7, label: '7 days' }, { value: 30, label: '30 days' }, { value: 90, label: '90 days' },
+  { value: 180, label: '180 days' }, { value: 365, label: '1 year' }, { value: 0, label: 'Keep until manually removed' },
+];
 
 function Logging({ guildId, data }: Props) {
   const d = useDraft(guildId, 'logging', data.settings.logging);
@@ -219,17 +246,22 @@ function Logging({ guildId, data }: Props) {
   const toggleEvent = (e: LogEvent) => d.set('events', v.events.includes(e) ? v.events.filter((x) => x !== e) : [...v.events, e]);
   return (
     <>
-      <SectionHeader emoji="📋" title="Logging" description="Keep a record of what happens in your server." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
+      <SectionHeader emoji="📋" title="Logging" description="Review server activity, investigate risk alerts and choose what evidence to keep." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
       <OffNotice show={!v.enabled}>
-        <Panel title="Where">
-          <Field label="Log channel">
+        <Panel title="Where events go" description="Choose one channel per category, or leave it blank to use the default log channel.">
+          <Field label="Default log channel">
             <ChannelPicker value={v.channelId} onChange={(x) => d.set('channelId', x)} channels={data.resources.channels} testId="picker-log" />
           </Field>
-          <Field label="Ignored channels" description="Nothing from these channels is logged.">
-            <MultiChannelPicker value={v.ignoredChannelIds} onChange={(x) => d.set('ignoredChannelIds', x)} channels={data.resources.channels} placeholder="None" testId="picker-ignored" />
+          {LOG_CATEGORIES.map((category) => (
+            <Field key={category} label={`${LOG_CATEGORY_INFO[category].name} channel`} description={LOG_CATEGORY_INFO[category].description}>
+              <ChannelPicker value={v.categoryChannels[category]} onChange={(channelId) => d.set('categoryChannels', { ...v.categoryChannels, [category]: channelId })} channels={data.resources.channels} placeholder="Use default channel" testId={`picker-log-${category}`} />
+            </Field>
+          ))}
+          <Field label="Incident and evidence center" description="Search event records, review grouped incidents and retry failed Discord log deliveries.">
+            <a href={`/dashboard/${guildId}/incidents`} className="inline-flex min-h-10 items-center rounded-xl border border-line bg-white/[0.04] px-3.5 text-[14px] font-semibold transition hover:bg-white/[0.08]">Open incident center</a>
           </Field>
         </Panel>
-        <Panel title="What to log">
+        <Panel title="What to log" description="Risk scores are investigation indicators, not proof of misconduct.">
           <div className="grid gap-2.5 py-4 sm:grid-cols-2">
             {LOG_EVENTS.map((e) => {
               const on = v.events.includes(e);
@@ -244,6 +276,54 @@ function Logging({ guildId, data }: Props) {
               );
             })}
           </div>
+        </Panel>
+        <Panel title="Filters" description="These choices apply to new evidence. Ignored roles also exclude their activity from risk signals.">
+          <Field label="Ignored channels" description="Nothing from these channels is recorded or analyzed for link-burst signals.">
+            <MultiChannelPicker value={v.ignoredChannelIds} onChange={(x) => d.set('ignoredChannelIds', x)} channels={data.resources.channels} placeholder="None" testId="picker-ignored" />
+          </Field>
+          <Field label="Ignored roles" description="Members with these roles are excluded from message and member evidence.">
+            <RolePicker value={v.ignoredRoleIds} onChange={(x) => d.set('ignoredRoleIds', x)} roles={data.resources.roles} max={25} placeholder="None" testId="picker-ignored-roles" />
+          </Field>
+          <Field inline label="Include bot activity" description="Bot activity is excluded unless you turn this on.">
+            <Switch checked={v.includeBots} onChange={(x) => d.set('includeBots', x)} label="Include bot activity" testId="switch-log-bots" />
+          </Field>
+        </Panel>
+        <Panel title="Evidence and retention" description="Message content and attachment details are off by default. Attachment details mean name, size and type—not a copy of the file.">
+          <Field inline label="Store message text" description="When on, message text is saved and included in the selected Discord log channel. Discord channel permissions control who can see it there; dashboard evidence also uses the sensitive-evidence roles below.">
+            <Switch checked={v.recordMessageContent} onChange={(x) => d.set('recordMessageContent', x)} label="Store message text" testId="switch-log-content" />
+          </Field>
+          <Field inline label="Store attachment details" description="When on, filenames, sizes and content types are saved. Files themselves are not copied.">
+            <Switch checked={v.recordAttachments} onChange={(x) => d.set('recordAttachments', x)} label="Store attachment details" testId="switch-log-attachments" />
+          </Field>
+          {LOG_CATEGORIES.map((category) => (
+            <Field key={category} label={`${LOG_CATEGORY_INFO[category].name} evidence retention`} description="Choose how long event evidence and related incidents are kept.">
+              <select value={v.retentionDays[category]} onChange={(e) => d.set('retentionDays', { ...v.retentionDays, [category]: Number(e.target.value) as 0 | 7 | 30 | 90 | 180 | 365 })} className="h-10 w-full rounded-xl border border-line bg-black/25 px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-rust-400/50" aria-label={`${LOG_CATEGORY_INFO[category].name} evidence retention`}>
+                {retentionChoices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
+              </select>
+            </Field>
+          ))}
+        </Panel>
+        <Panel title="Risk alerts" description="Clanky groups related signals into incidents. Detection is limited to events enabled above.">
+          <Field inline label="Suspicious activity detection" description="Looks for channel-deletion bursts, rapid bans, permission-change bursts, and new accounts posting many links.">
+            <Switch checked={v.detectionEnabled} onChange={(x) => d.set('detectionEnabled', x)} label="Suspicious activity detection" testId="switch-risk-detection" />
+          </Field>
+          <Field label="Alert roles" description="Roles to mention for new high-risk incidents. Leave blank to create incidents without a role ping.">
+            <RolePicker value={v.alertRoleIds} onChange={(x) => d.set('alertRoleIds', x)} roles={data.resources.roles} max={25} placeholder="No role mentions" testId="picker-log-alert-roles" />
+          </Field>
+          <Field label="Minimum alert severity" description="Higher thresholds reduce notifications. Incident records remain available in the dashboard.">
+            <select value={v.alertMinimumSeverity} onChange={(e) => d.set('alertMinimumSeverity', e.target.value as typeof v.alertMinimumSeverity)} className="h-10 w-full rounded-xl border border-line bg-black/25 px-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-rust-400/50" aria-label="Minimum alert severity">
+              <option value="medium">Medium and above</option><option value="high">High and above</option><option value="critical">Critical only</option>
+            </select>
+          </Field>
+          <p className="rounded-xl border border-hazard/20 bg-hazard/[0.05] px-3.5 py-2.5 text-[13px] leading-relaxed text-muted">A risk score is a prompt for human review, not a conclusion that someone did something wrong. Moderator attribution needs the bot’s View Audit Log permission. Link-burst detection needs Message Content Intent enabled in the Discord Developer Portal and in the bot environment; it stores a count and event details, never the message text. The separate message-text option above applies to edit/delete evidence.</p>
+        </Panel>
+        <Panel title="Who can review" description="Server managers always have access. These roles also grant dashboard access to the indicated records.">
+          <Field label="Log and incident readers" description="Can search events and view incident timelines, but not see message text or attachment details unless separately allowed.">
+            <RolePicker value={v.viewerRoleIds} onChange={(x) => d.set('viewerRoleIds', x)} roles={data.resources.roles} max={25} placeholder="Server managers only" testId="picker-log-viewers" />
+          </Field>
+          <Field label="Sensitive evidence readers" description="Also grants access to search logs and review incidents, plus stored message text and attachment details. Server managers keep access.">
+            <RolePicker value={v.sensitiveEvidenceRoleIds} onChange={(x) => d.set('sensitiveEvidenceRoleIds', x)} roles={data.resources.roles} max={25} placeholder="Server managers only" testId="picker-log-evidence-viewers" />
+          </Field>
         </Panel>
       </OffNotice>
       <SaveBar dirty={d.dirty} saving={d.saving} onSave={() => d.save()} onReset={d.reset} />

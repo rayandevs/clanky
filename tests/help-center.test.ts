@@ -36,6 +36,7 @@ test('Help Center search text includes practical phrases from guide body copy an
   assert.match(textFor('server-history-and-transcripts'), /transcripts/);
   assert.match(textFor('leveling-and-ranks'), /cooldown/);
   assert.match(textFor('common-fixes'), /commands missing/);
+  assert.match(textFor('logging-and-change-history'), /not proof of misconduct/);
 });
 
 test('Help Center search ranks exact guide titles and filters by topic', () => {
@@ -45,5 +46,6 @@ test('Help Center search ranks exact guide titles and filters by topic', () => {
   const communityResults = searchHelpArticles('ticket', 'community');
   assert.ok(communityResults.some((article) => article.slug === 'tickets'));
   assert.ok(communityResults.every((article) => article.category === 'community'));
+  assert.ok(searchHelpArticles('incident evidence', 'safety').some((article) => article.slug === 'logging-and-change-history'));
   assert.equal(searchHelpArticles('no matching guide phrase').length, 0);
 });

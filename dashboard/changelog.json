@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.1.0-beta.4",
+    "date": "2026-10-20",
+    "title": "A closer look at incidents",
+    "highlights": [
+      "Review grouped alerts in one incident timeline, with affected members, channels, roles, and moderator actions",
+      "Search and filter activity, check evidence integrity, and retry log messages Discord could not deliver",
+      "Control who can view logs or sensitive message evidence in server Logging settings"
+    ]
+  },
+  {
     "version": "0.1.0-beta.3",
     "date": "2026-10-19",
     "title": "Save controls, always at hand",

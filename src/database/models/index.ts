@@ -13,5 +13,7 @@ export * from './Suggestion.js';
 export * from './Reminder.js';
 export * from './RolePanel.js';
 export * from './SettingsAudit.js';
+export * from './LoggerEvent.js';
+export * from './Incident.js';
 export * from './GamePlayer.js';
 export * from './DashboardSession.js';

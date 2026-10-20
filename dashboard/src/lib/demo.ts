@@ -3,7 +3,7 @@
  * Discord or MongoDB. Used only by `npm run build:demo`.
  */
 import { ApiError } from './api';
-import type { Channel, GuildListItem, GuildSettings, Me, Meta, Overview, Release, Role, RuleKind, SalvagePlayer, SectionId, SettingsPayload, SuggestionQueueResponse, SuggestionStatus, TicketTranscriptDetailResponse, TicketTranscriptListResponse } from './types';
+import type { Channel, GuildListItem, GuildSettings, Incident, IncidentStatus, LoggerEvent, Me, Meta, Overview, Release, Role, RuleKind, SalvagePlayer, SectionId, SettingsPayload, SuggestionQueueResponse, SuggestionStatus, TicketTranscriptDetailResponse, TicketTranscriptListResponse } from './types';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const id = (n: number) => `13${String(n).padStart(16, '0')}`;
@@ -14,6 +14,7 @@ let loggedIn = true;
 const postedTicketPanels = new Map<string, NonNullable<SettingsPayload['postedTicketPanels']>>();
 const demoSeasons = new Map<string, Array<{ seasonId: string; name: string; active: boolean; startedAt: string; endedAt: string | null; rewardRoleId: string | null; rewardTopCount: number }>>();
 const demoSuggestions = new Map<string, SuggestionQueueResponse['entries']>();
+const demoLoggerData = new Map<string, { incidents: Incident[]; events: LoggerEvent[] }>();
 
 function suggestionsFor(guildId: string) {
   if (!demoSuggestions.has(guildId)) demoSuggestions.set(guildId, [
@@ -33,11 +34,55 @@ function seasonsFor(guildId: string) {
   return demoSeasons.get(guildId)!;
 }
 
+function loggerDataFor(guildId: string) {
+  if (!demoLoggerData.has(guildId)) {
+    const incidentId = '7a7d6618-88b5-45e7-9b87-05aa095f1512';
+    const linkIncidentId = 'f8529336-e93e-4303-83a9-4ec747f5ac54';
+    const events: LoggerEvent[] = [
+      { eventId: 'd1010f41-2fbf-4f48-84cb-2bec56a18d01', eventType: 'channelDelete', category: 'server', source: 'audit_log', occurredAt: hoursAgo(1), actorId: people[1]!.id, actorAttribution: 'audit_log', targetUserId: null, channelId: id(24), roleId: null, messageId: null, summary: `<@${people[1]!.id}> deleted a channel (object ${id(24)}).`, severity: 'high', riskScore: 85, riskReasons: ['channel_delete_burst'], incidentId, evidenceHash: '7f1630ae3d25729c5436ad7b9a19020a3c50da4b143164d58ed6b1d9c92351b0', integrityValid: true, delivery: { status: 'delivered', channelId: id(43), attempts: 1, nextAttemptAt: null, lastError: null, messageId: id(910) }, evidence: { changedFields: ['name'] } },
+      { eventId: 'c9456ed3-0200-44dd-82a7-cfc3ac63da74', eventType: 'channelDelete', category: 'server', source: 'audit_log', occurredAt: hoursAgo(0.98), actorId: people[1]!.id, actorAttribution: 'audit_log', targetUserId: null, channelId: id(25), roleId: null, messageId: null, summary: `<@${people[1]!.id}> deleted a channel (object ${id(25)}).`, severity: 'high', riskScore: 85, riskReasons: ['channel_delete_burst'], incidentId, evidenceHash: '5a16aae8c63c373571a03f0554e0795371531b0cc5d2f341fccb6bfcc83a4900', integrityValid: true, delivery: { status: 'failed', channelId: id(43), attempts: 3, nextAttemptAt: hoursAgo(0.1), lastError: 'Missing permission to send messages.', messageId: null }, evidence: { changedFields: ['name', 'position'] } },
+      { eventId: '7024e94e-18bd-4e37-9e0e-c4714dc7ad03', eventType: 'channelDelete', category: 'server', source: 'audit_log', occurredAt: hoursAgo(0.99), actorId: people[1]!.id, actorAttribution: 'audit_log', targetUserId: null, channelId: id(26), roleId: null, messageId: null, summary: `<@${people[1]!.id}> deleted a channel (object ${id(26)}).`, severity: 'high', riskScore: 85, riskReasons: ['channel_delete_burst'], incidentId, evidenceHash: '922a08d86f590e1999264de38bc5269c9326b8e551e3980001fe2e6c1d3fc2a5', integrityValid: true, delivery: { status: 'delivered', channelId: id(43), attempts: 1, nextAttemptAt: null, lastError: null, messageId: id(916) }, evidence: { changedFields: ['name'] } },
+      { eventId: '935a26ca-0048-4e29-8d05-bc4c421aa839', eventType: 'memberBan', category: 'moderation', source: 'audit_log', occurredAt: hoursAgo(14), actorId: people[2]!.id, actorAttribution: 'audit_log', targetUserId: people[4]!.id, channelId: null, roleId: null, messageId: null, summary: `<@${people[2]!.id}> banned a member (object ${people[4]!.id}).`, severity: 'low', riskScore: 0, riskReasons: [], incidentId: null, evidenceHash: '81ca3e223f32e79b87927879812a34ee629e132c48af01e89b7d75aa50b04b0e', integrityValid: true, delivery: { status: 'delivered', channelId: id(41), attempts: 1, nextAttemptAt: null, lastError: null, messageId: id(911) }, evidence: { changedFields: [] } },
+      { eventId: '0df51810-e0fb-4d80-a0e0-913c9d2e4b41', eventType: 'webhookCreate', category: 'integrations', source: 'audit_log', occurredAt: hoursAgo(0.6), actorId: people[3]!.id, actorAttribution: 'audit_log', targetUserId: null, channelId: id(21), roleId: null, messageId: null, summary: `<@${people[3]!.id}> created a webhook shortly before a link burst in the same channel.`, severity: 'low', riskScore: 0, riskReasons: [], incidentId: linkIncidentId, evidenceHash: 'cdf3f3f8627eb0c9c23b86caa710185b73f4f81d4fa99c96ef56bf14b11bcacd', integrityValid: true, delivery: { status: 'delivered', channelId: id(41), attempts: 1, nextAttemptAt: null, lastError: null, messageId: id(917) }, evidence: { changedFields: ['channelId'] } },
+      { eventId: 'f89a91fd-d9fc-4c73-9cf0-0d7a24eeeb40', eventType: 'suspiciousLinks', category: 'messages', source: 'detector', occurredAt: hoursAgo(0.5), actorId: null, actorAttribution: 'unknown', targetUserId: people[5]!.id, channelId: id(21), roleId: null, messageId: id(912), summary: 'A recently created account sent link-containing messages 5 times within one minute. Message text is not included in this signal.', severity: 'critical', riskScore: 95, riskReasons: ['new_account_links_after_webhook'], incidentId: linkIncidentId, evidenceHash: '1f2b05e769331ea5072e91f4722fdbadeb392cbe929238282ee6631289f18900', integrityValid: false, delivery: { status: 'not_configured', channelId: null, attempts: 0, nextAttemptAt: null, lastError: 'No log channel is configured for this category.', messageId: null }, evidence: { linkCount: 5, relatedMessageIds: [id(912), id(913), id(914)] } },
+    ];
+    const incidents: Incident[] = [
+      { incidentId, title: 'Rapid channel deletions', summary: 'Several channels were deleted within a short period. Review the timeline and actor attribution.', ruleId: 'channel_delete_burst', status: 'investigating', severity: 'high', riskScore: 85, firstEventAt: hoursAgo(1), lastEventAt: hoursAgo(0.98), eventCount: 3, affectedUserIds: [], affectedChannelIds: [id(24), id(25), id(26)], affectedRoleIds: [], actorIds: [people[1]!.id], notes: [{ actorId: people[0]!.id, action: 'status', status: 'investigating', text: 'Checking whether this was part of the planned channel cleanup.', createdAt: hoursAgo(0.8) }], resolvedAt: null },
+      { incidentId: linkIncidentId, title: 'New-account link burst after webhook creation', summary: 'A recently created account posted repeated links soon after a webhook was created. This needs a human review.', ruleId: 'new_account_links_after_webhook', status: 'open', severity: 'critical', riskScore: 95, firstEventAt: hoursAgo(0.6), lastEventAt: hoursAgo(0.5), eventCount: 2, affectedUserIds: [people[5]!.id], affectedChannelIds: [id(21)], affectedRoleIds: [], actorIds: [], notes: [], resolvedAt: null },
+    ];
+    demoLoggerData.set(guildId, { incidents, events });
+  }
+  return demoLoggerData.get(guildId)!;
+}
+
+function demoCanManage(guildId: string): boolean {
+  return guildId !== id(200);
+}
+
+function demoVisibleEvidence(event: LoggerEvent, canViewSensitive: boolean): LoggerEvent {
+  if (canViewSensitive || !event.evidence) return event;
+  return {
+    ...event,
+    evidence: {
+      changedFields: event.evidence.changedFields,
+      linkCount: event.evidence.linkCount,
+      relatedEventIds: event.evidence.relatedEventIds,
+      relatedMessageIds: event.evidence.relatedMessageIds,
+    },
+  };
+}
+
+function loggerListItem(event: LoggerEvent): Omit<LoggerEvent, 'evidence'> {
+  const item = { ...event };
+  delete item.evidence;
+  return item;
+}
+
 const MODULES: Meta['modules'] = [
   { id: 'general', name: 'General', emoji: 'settings', description: 'Look and feel, update notes and modules.', toggleable: false, hasSettingsPage: true },
   { id: 'moderation', name: 'Moderation', emoji: 'shield', description: 'Warn, timeout, kick and ban with case history.', toggleable: true, hasSettingsPage: true },
   { id: 'automod', name: 'AutoMod', emoji: 'automod', description: 'Block invites, spam and bad words using Discord AutoMod.', toggleable: true, hasSettingsPage: true },
-  { id: 'logging', name: 'Logging', emoji: 'log', description: 'Log edits, deletes, joins and leaves.', toggleable: true, hasSettingsPage: true },
+  { id: 'logging', name: 'Logging', emoji: 'log', description: 'Search event evidence, review grouped incidents, tune privacy and retry delivery.', toggleable: true, hasSettingsPage: true },
   { id: 'welcome', name: 'Welcome', emoji: 'welcome', description: 'Greet new members and give them roles.', toggleable: true, hasSettingsPage: true },
   { id: 'tickets', name: 'Tickets', emoji: 'ticket', description: 'Private support channels with transcripts.', toggleable: true, hasSettingsPage: true },
   { id: 'suggestions', name: 'Suggestions', emoji: 'suggestion', description: 'Let members share and vote on ideas.', toggleable: true, hasSettingsPage: true },
@@ -49,8 +94,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.18', label: 'v0.1.0 Beta 18', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-beta.3', label: 'v0.1.0 Beta 3', codename: 'Rench' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.19', label: 'v0.1.0 Beta 19', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-beta.4', label: 'v0.1.0 Beta 4', codename: 'Rench' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -67,7 +112,7 @@ const me: Me = {
 
 const guildList: GuildListItem[] = [
   { id: id(100), name: 'Rusty Bolts HQ', icon: null, owner: true, botIn: true, memberCount: 1_284, inviteUrl: null },
-  { id: id(200), name: 'Scrap Collectors', icon: null, owner: false, botIn: true, memberCount: 342, inviteUrl: null },
+  { id: id(200), name: 'Scrap Collectors', icon: null, owner: false, botIn: true, memberCount: 342, inviteUrl: null, access: 'logs' },
   { id: id(300), name: 'Late Night Devs', icon: null, owner: true, botIn: false, memberCount: null, inviteUrl: 'https://discord.com/oauth2/authorize' },
 ];
 
@@ -106,7 +151,23 @@ const roles: Role[] = [
 const defaults = (): GuildSettings => ({
   general: { accentColor: 0xe2702f, updatesChannelId: id(12) },
   moderation: { enabled: true, logChannelId: id(41), reportsChannelId: id(42), dmOnAction: true, requireReason: false },
-  logging: { enabled: true, channelId: id(43), events: ['messageDelete', 'messageEdit', 'memberJoin', 'memberLeave', 'memberRoles', 'nickname'], ignoredChannelIds: [id(24)] },
+  logging: {
+    enabled: true,
+    channelId: id(43),
+    events: ['messageDelete', 'messageEdit', 'messageBulkDelete', 'suspiciousLinks', 'memberJoin', 'memberLeave', 'memberRoles', 'nickname', 'memberBan', 'memberUnban', 'memberKick', 'channelCreate', 'channelDelete', 'channelUpdate', 'roleCreate', 'roleDelete', 'roleUpdate', 'webhookCreate', 'webhookUpdate', 'webhookDelete'],
+    categoryChannels: { messages: id(43), members: id(43), moderation: id(41), server: id(43), integrations: id(41) },
+    ignoredChannelIds: [id(24)],
+    ignoredRoleIds: [],
+    includeBots: false,
+    recordMessageContent: false,
+    recordAttachments: false,
+    detectionEnabled: true,
+    alertRoleIds: [id(52)],
+    alertMinimumSeverity: 'high',
+    viewerRoleIds: [id(52)],
+    sensitiveEvidenceRoleIds: [id(51)],
+    retentionDays: { messages: 90, members: 90, moderation: 365, server: 90, integrations: 90 },
+  },
   welcome: {
     enabled: true,
     join: {
@@ -221,6 +282,7 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.19', date: '2026-10-20', title: 'A clearer view of server activity', highlights: ['Search a durable activity timeline and group related high-risk signals into incidents', 'Review affected members, channels, roles and moderator actions, with notes and retryable Discord delivery', 'Choose category destinations, retention periods, and separate access for logs and sensitive evidence'] },
     { version: '0.1.0-beta.18', date: '2026-10-19', title: 'Unsaved edits, in sight', highlights: ['Keep unsaved settings visible in a fixed side panel while you scroll through a server page', 'Collapse the panel to a small side tab while editing, then save or reset when you are ready'] },
     { version: '0.1.0-beta.17', date: '2026-10-19', title: 'A guide for every step', highlights: ['Added a searchable Help Center to the dashboard, with friendly step-by-step guides for Clanky’s bot and web features', 'Find answers by topic, share a direct guide link, and follow related articles without leaving the dashboard', 'Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen'] },
     { version: '0.1.0-beta.15', date: '2026-10-18', title: 'Welcome cards, in sync 👋', highlights: ['Dashboard previews use the same Canvas renderer as bot messages', 'Template colors and labels now match their names', 'Clean card text and no Discord ALT overlay'] },
@@ -237,6 +299,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-beta.4', date: '2026-10-20', title: 'A closer look at incidents', highlights: ['Review grouped alerts in one incident timeline with affected objects and moderator actions', 'Search and filter activity, check evidence integrity, and retry log messages Discord could not deliver', 'Control who can view logs or sensitive message evidence in server Logging settings'] },
     { version: '0.1.0-beta.3', date: '2026-10-19', title: 'Save controls, always at hand', highlights: ['Keep Save and Reset visible in a fixed side panel while you work through settings', 'Collapse the panel to a small animated side tab and reopen it whenever you need the controls', 'The panel stays tucked away until the changes are saved or reset'] },
     { version: '0.1.0-beta.2', date: '2026-10-19', title: 'Help, without the hunt', highlights: ['Browse friendly guides for getting started, dashboard settings, and Clanky’s bot features', 'Search guide text and topics instantly, jump between sections, and share direct links to individual guides', 'Step-by-step cards, quick tips, related guides, and keyboard search make answers easier to follow', 'Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen'] },
     { version: '0.1.0-beta.1', date: '2026-10-19', title: 'Rench gets a voice', highlights: ['Signed-in users can send 1–5 star ratings from the footer link or a randomized prompt with cooldown and permanent opt-out', 'Per-account and per-IP limits protect feedback delivery through the server-only Discord webhook', 'Acknowledged submissions carry selected profile and request metadata, never session credentials; the dashboard begins its beta releases under Rench'] },
@@ -273,10 +336,66 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
   if (a === 'guilds' && b) {
     const g = guildList.find((x) => x.id === b);
     if (!g?.botIn) throw new ApiError(404, "Clanky isn't in that server.", 'not_found');
-    if (!c) return ok(overview(b));
+    if (c === 'logging' && d === 'context' && method === 'GET') return ok({ guild: { id: g.id, name: g.name, icon: g.icon }, canManage: demoCanManage(b), canViewSensitive: demoCanManage(b), loggingEnabled: settingsOf(b).logging.enabled });
+    if (c === 'incidents') {
+      const data = loggerDataFor(b);
+      if (!d && method === 'GET') {
+        const params = new URLSearchParams(path.split('?')[1] ?? '');
+        const filter = params.get('status');
+        const page = Math.max(0, Number(params.get('page')) || 0);
+        const found = data.incidents.filter((incident) => !filter || incident.status === filter).sort((x, y) => y.lastEventAt.localeCompare(x.lastEventAt));
+        return ok({ total: found.length, page, pages: Math.max(1, Math.ceil(found.length / 25)), entries: found.slice(page * 25, (page + 1) * 25) });
+      }
+      const incident = data.incidents.find((item) => item.incidentId === d);
+      if (!incident) throw new ApiError(404, 'That incident is no longer available.', 'not_found');
+      if (method === 'GET' && !e) return ok({ incident, events: data.events.filter((event) => event.incidentId === d).sort((x, y) => x.occurredAt.localeCompare(y.occurredAt)).map((event) => demoVisibleEvidence(event, demoCanManage(b))), canManage: demoCanManage(b), canViewSensitive: demoCanManage(b) });
+      if (method === 'PATCH' && !e) {
+        if (!demoCanManage(b)) throw new ApiError(403, 'Only server managers can update incident reviews.', 'forbidden');
+        const change = body as { status?: IncidentStatus; note?: string };
+        const now = new Date().toISOString();
+        if (change.status) {
+          incident.status = change.status;
+          incident.resolvedAt = ['resolved', 'false_alarm'].includes(change.status) ? now : null;
+          incident.notes.push({ actorId: people[0]!.id, action: 'status', status: change.status, text: change.note?.trim() || `Marked as ${change.status.replace('_', ' ')}.`, createdAt: now });
+        } else if (change.note?.trim()) incident.notes.push({ actorId: people[0]!.id, action: 'note', text: change.note.trim(), createdAt: now });
+        incident.notes = incident.notes.slice(-20);
+        return ok({ incident });
+      }
+    }
+    if (c === 'logs') {
+      const data = loggerDataFor(b);
+      if (!d && method === 'GET') {
+        const params = new URLSearchParams(path.split('?')[1] ?? '');
+        const q = (params.get('q') ?? '').toLowerCase();
+        const event = params.get('event');
+        const category = params.get('category');
+        const delivery = params.get('delivery');
+        const page = Math.max(0, Number(params.get('page')) || 0);
+        const found = data.events.filter((item) => (!q || `${item.eventId} ${item.summary} ${item.actorId ?? ''} ${item.targetUserId ?? ''} ${item.channelId ?? ''} ${item.roleId ?? ''}`.toLowerCase().includes(q)) && (!event || item.eventType === event) && (!category || item.category === category) && (!delivery || item.delivery.status === delivery)).sort((x, y) => y.occurredAt.localeCompare(x.occurredAt));
+        return ok({ total: found.length, page, pages: Math.max(1, Math.ceil(found.length / 25)), entries: found.slice(page * 25, (page + 1) * 25).map(loggerListItem), canViewSensitive: demoCanManage(b) });
+      }
+      const event = data.events.find((item) => item.eventId === d);
+      if (!event) throw new ApiError(404, 'That event is no longer available.', 'not_found');
+      if (method === 'GET' && !e) return ok(demoVisibleEvidence(event, demoCanManage(b)));
+      if (method === 'POST' && e === 'retry') {
+        if (!demoCanManage(b)) throw new ApiError(403, 'Only server managers can retry delivery.', 'forbidden');
+        event.delivery.status = 'delivered';
+        event.delivery.attempts += 1;
+        event.delivery.lastError = null;
+        event.delivery.messageId = id(920);
+        return ok({ event });
+      }
+    }
+    if (!c) {
+      if (!demoCanManage(b)) throw new ApiError(403, 'This server only grants you access to logs.', 'forbidden');
+      return ok(overview(b));
+    }
     const s = settingsOf(b);
     const rules = (): Record<RuleKind, boolean> => ({ invites: !!s.automod.rules.invites, mentionSpam: !!s.automod.rules.mentionSpam, spam: !!s.automod.rules.spam, keywords: !!s.automod.rules.keywords });
-    if (c === 'settings' && method === 'GET') return ok({ settings: s, resources: { channels, roles }, postedTicketPanels: postedTicketPanels.get(b) ?? [], automod: { canManage: true, rules: rules() } } satisfies SettingsPayload);
+    if (c === 'settings' && method === 'GET') {
+      if (!demoCanManage(b)) throw new ApiError(403, 'This server only grants you access to logs.', 'forbidden');
+      return ok({ settings: s, resources: { channels, roles }, postedTicketPanels: postedTicketPanels.get(b) ?? [], automod: { canManage: true, rules: rules() } } satisfies SettingsPayload);
+    }
     if (c === 'settings' && method === 'PATCH' && d) {
       const section = d as SectionId;
       if (section === 'leveling') {

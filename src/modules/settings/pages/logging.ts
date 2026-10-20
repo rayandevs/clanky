@@ -7,10 +7,24 @@ import { channelPicker, finishPage, pageHeader, save, selectedIds, sid, toggleBu
 export const LOG_EVENT_LABELS: Record<LogEvent, string> = {
   messageDelete: 'Deleted messages',
   messageEdit: 'Edited messages',
+  messageBulkDelete: 'Bulk message deletes',
+  suspiciousLinks: 'Suspicious link bursts',
   memberJoin: 'Members joining',
   memberLeave: 'Members leaving',
   memberRoles: 'Role changes',
   nickname: 'Nickname changes',
+  memberBan: 'Member bans',
+  memberUnban: 'Member unbans',
+  memberKick: 'Member kicks',
+  channelCreate: 'Channel creations',
+  channelDelete: 'Channel deletions',
+  channelUpdate: 'Channel updates',
+  roleCreate: 'Role creations',
+  roleDelete: 'Role deletions',
+  roleUpdate: 'Role and permission updates',
+  webhookCreate: 'Webhook creations',
+  webhookUpdate: 'Webhook updates',
+  webhookDelete: 'Webhook deletions',
 };
 
 export const loggingPage: SettingsPage = {
@@ -22,6 +36,7 @@ export const loggingPage: SettingsPage = {
       `${emoji('channel')} **Log channel** · ${channelMention(s.channelId)}`,
       `${emoji('list')} **Logging** · ${s.events.length ? s.events.map((e) => LOG_EVENT_LABELS[e]).join(', ') : '`Nothing`'}`,
       `${emoji('filter')} **Ignored channels** · ${s.ignoredChannelIds.length}`,
+      '-# Configure category channels, evidence privacy, retention and access roles in the dashboard.',
     ].join('\n');
 
     const container = pageHeader(env, 'logging', summary)

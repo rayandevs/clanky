@@ -278,18 +278,29 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
-    slug: 'logging-and-change-history', title: 'Logging and change history', summary: 'Choose which server events to log and review changes made to Clanky settings.', category: 'safety', icon: 'ScrollText', readTime: 3, tags: ['logs', 'logging', 'audit', 'change history', 'deleted messages', 'edited messages', 'nickname', 'roles'],
+    slug: 'logging-and-change-history', title: 'Logging and incident review', summary: 'Choose which events to log, search evidence, investigate grouped incidents and review Clanky settings changes.', category: 'safety', icon: 'ScrollText', readTime: 5, tags: ['logs', 'logging', 'audit', 'incident center', 'risk score', 'evidence', 'change history', 'deleted messages', 'edited messages', 'nickname', 'roles', 'webhooks', 'retention'],
     sections: [
       { id: 'event-logs', title: 'Choose what gets logged', blocks: [
         { type: 'steps', items: [
           { title: 'Choose a log channel', body: 'Open Logging settings, enable the module, and select a channel Clanky can view and post in.' },
-          { title: 'Choose event types', body: 'Select from supported message edits/deletions, joins/leaves, role changes, and nickname changes.' },
-          { title: 'Exclude channels if needed', body: 'Add channels that should not appear in message event logs.' },
+          { title: 'Choose event types and destinations', body: 'Select the events to record and choose a destination for each category. Clanky can capture message changes, member and moderation activity, server changes, integrations, and suspicious new-account link bursts.' },
+          { title: 'Choose exclusions and retention', body: 'Exclude channels, roles or bots when appropriate. Set different retention periods per category, or choose indefinite retention where available.' },
+          { title: 'Set access and privacy', body: 'Choose which roles can search dashboard records and which roles can view sensitive message evidence. Sensitive-evidence roles can also search records; ordinary log-reader roles cannot see message text or attachment details. Recording message text or attachment details is optional; use the narrowest access and shortest retention that work for your server.' },
         ] },
-        { type: 'callout', tone: 'note', title: 'Keep logs in a staff-only channel', body: 'Logs can contain information members did not intend to publish to everyone. Set Discord channel permissions to match your community’s privacy expectations.' },
+        { type: 'callout', tone: 'note', title: 'Check the bot’s permissions', body: 'Clanky needs View Audit Log to attribute many moderation and server changes. Message Content Intent is needed for message-text logging and new-account link-burst detection. An administrator must enable that intent for the bot application.' },
+        { type: 'callout', tone: 'important', title: 'Keep sensitive logs private', body: 'If message text is recorded, it is also sent to the selected Discord log channel. Set that channel’s Discord permissions carefully; dashboard evidence-reader roles do not control who can read the Discord channel.' },
+      ] },
+      { id: 'incident-center', title: 'Review suspicious activity', blocks: [
+        { type: 'steps', items: [
+          { title: 'Open Incident Center', body: 'From a server dashboard, choose Incident Center. Staff with an assigned log-viewer role can also open it from their server list.' },
+          { title: 'Choose an incident or search records', body: 'Grouped incidents bring related signals into one timeline. Search events by summary or Discord ID, and narrow results by event, category or delivery status.' },
+          { title: 'Review the timeline and evidence', body: 'Check timestamps, affected members/channels, actor attribution, delivery state and integrity status. Open evidence only if you have been given sensitive-evidence access.' },
+          { title: 'Record the outcome', body: 'Server managers can mark an incident as investigating, resolved or a false alarm and add a short note. Failed Discord delivery can be retried after its destination is configured.' },
+        ] },
+        { type: 'callout', tone: 'important', title: 'A risk score is not a verdict', body: 'Automated scores and groupings are indicators for investigation, not proof of misconduct. Confirm the full context before taking action. A matching evidence hash can detect certain changes to a saved record, but cannot prove the original event was truthful or detect deletion of the whole database.' },
       ] },
       { id: 'history', title: 'Review settings changes', blocks: [
-        { type: 'paragraph', text: 'Open Change history from a server’s dashboard menu to see recent configuration changes and who made them. The overview also shows the most recent changes.' },
+        { type: 'paragraph', text: 'Open Change history from a server’s dashboard menu to see recent configuration changes and who made them, including changes to logging settings. The overview also shows the most recent changes.' },
       ] },
     ],
   },

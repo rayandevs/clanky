@@ -14,6 +14,7 @@ import { guildRoutes } from './routes/guilds.js';
 import { meRoutes } from './routes/me.js';
 import { publicRoutes } from './routes/public.js';
 import { feedbackRoutes } from './routes/feedback.js';
+import { loggingRoutes } from './routes/logging.js';
 import { dashboardVersion } from './version.js';
 
 const log = createLogger('dashboard');
@@ -76,6 +77,7 @@ export async function createDashboard(client: Clanky): Promise<FastifyInstance> 
   }));
   await app.register(async (scope) => meRoutes(scope, client));
   await app.register(async (scope) => guildRoutes(scope, client));
+  await app.register(async (scope) => loggingRoutes(scope, client));
 
   if (existsSync(DIST)) {
     await app.register(fastifyStatic, {

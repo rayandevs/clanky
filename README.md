@@ -2,7 +2,7 @@
 
 A multipurpose Discord bot for **community management, moderation and engagement** — built with the newest Discord features and set up entirely from Discord.
 
-> **Version:** `0.1.0-beta.18` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
+> **Version:** `0.1.0-beta.19` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
 
 - **Slash commands only.** No prefixes, no message commands.
 - **Components V2 everywhere.** Every message uses Containers, Sections, Text Displays, Separators and File components. No embeds.
@@ -31,7 +31,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 | 🎮 **Games** | **Salvage**: press Dig, find loot, level up. 44 items in 4 zones, shinies, events, a tool shop, a collection log and server + global leaderboards. Progress is global. |
 | ⏰ **Reminders** | `/remind me in:2h about:...` with snooze buttons. Works in DMs and as a user-installed app. |
 | 📊 **Polls** | `/poll` opens a modal and posts a **native Discord poll**. |
-| 📋 **Logging** | Deleted or edited messages, joins and leaves, role and nickname changes. Choose what to log and which channels to ignore. |
+| 📋 **Logging** | Search categorized server evidence, review grouped incident timelines and retry failed log delivery. Choose destinations, event filters, exclusions, privacy options, retention and reader roles. Automated risk alerts are prompts for investigation—not proof of misconduct. |
 | 👤 **Preferences** | Each user can turn on private replies, level-up pings and update notices, choose reminder delivery, or delete all their data. |
 
 ## 📜 Commands
@@ -76,13 +76,15 @@ Admins can change who can use each command in **Server Settings → Integrations
 
 1. **Bot** tab → copy the token and turn on these privileged intents:
    - **Server Members Intent** (welcome messages, auto roles, logs)
-   - **Message Content Intent** (edit/delete logs; optional, see `ENABLE_MESSAGE_CONTENT`)
+   - **Message Content Intent** (needed for message-text logs and new-account link-burst detection; optional, see `ENABLE_MESSAGE_CONTENT`)
 2. **Installation** tab → turn on **Guild Install** and **User Install**. User Install lets people use `/remind`, `/help` and more anywhere.
 3. Invite the bot with the `bot` and `applications.commands` scopes:
 
 ```
-https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&scope=bot+applications.commands&permissions=564358971255862
+https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&scope=bot+applications.commands&permissions=564358971255990
 ```
+
+Clanky also needs the **View Audit Log** server permission to record who performed moderation, channel, role and webhook changes. The install link above includes it. If you already invited Clanky using an older link, update its role permissions in Discord.
 
 ### 3. Install and configure
 

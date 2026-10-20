@@ -46,6 +46,7 @@ export interface GuildListItem {
   botIn: boolean;
   memberCount: number | null;
   inviteUrl: string | null;
+  access?: 'manage' | 'logs';
 }
 
 export interface UserSummary { id: string; name: string; avatar: string }
@@ -62,8 +63,66 @@ export interface Overview {
   topPlayers: Array<{ user: UserSummary; level: number; xp: number }>;
 }
 
-export const LOG_EVENTS = ['messageDelete', 'messageEdit', 'memberJoin', 'memberLeave', 'memberRoles', 'nickname'] as const;
+export const LOG_EVENTS = [
+  'messageDelete', 'messageEdit', 'messageBulkDelete', 'suspiciousLinks',
+  'memberJoin', 'memberLeave', 'memberRoles', 'nickname',
+  'memberBan', 'memberUnban', 'memberKick',
+  'channelCreate', 'channelDelete', 'channelUpdate',
+  'roleCreate', 'roleDelete', 'roleUpdate',
+  'webhookCreate', 'webhookUpdate', 'webhookDelete',
+] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
+export const LOG_CATEGORIES = ['messages', 'members', 'moderation', 'server', 'integrations'] as const;
+export type LogCategory = (typeof LOG_CATEGORIES)[number];
+export type LogSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type IncidentStatus = 'open' | 'investigating' | 'resolved' | 'false_alarm';
+export interface IncidentNote {
+  actorId: string;
+  action: 'note' | 'status';
+  status?: IncidentStatus;
+  text: string;
+  createdAt: string;
+}
+export interface Incident {
+  incidentId: string;
+  title: string;
+  summary: string;
+  ruleId: string;
+  status: IncidentStatus;
+  severity: LogSeverity;
+  riskScore: number;
+  firstEventAt: string;
+  lastEventAt: string;
+  eventCount: number;
+  affectedUserIds: string[];
+  affectedChannelIds: string[];
+  affectedRoleIds: string[];
+  actorIds: string[];
+  notes: IncidentNote[];
+  resolvedAt: string | null;
+}
+export interface LoggerEvent {
+  eventId: string;
+  eventType: LogEvent;
+  category: LogCategory;
+  source: 'gateway' | 'audit_log' | 'detector';
+  occurredAt: string;
+  actorId: string | null;
+  actorAttribution: 'self' | 'audit_log' | 'system' | 'unknown';
+  targetUserId: string | null;
+  channelId: string | null;
+  roleId: string | null;
+  messageId: string | null;
+  summary: string;
+  severity: LogSeverity;
+  riskScore: number;
+  riskReasons: string[];
+  incidentId: string | null;
+  evidenceHash: string;
+  integrityValid: boolean;
+  delivery: { status: 'pending' | 'sending' | 'delivered' | 'failed' | 'not_configured'; channelId: string | null; attempts: number; nextAttemptAt: string | null; lastError: string | null; messageId: string | null };
+  evidence?: { content?: string; beforeContent?: string; attachments?: Array<{ name: string; size: number; contentType: string | null }>; changedFields?: string[]; linkCount?: number; relatedEventIds?: string[]; relatedMessageIds?: string[] };
+}
 
 export type WelcomeEvent = 'join' | 'leave';
 export type WelcomeFormat = 'container' | 'text' | 'text_image' | 'image_only';
@@ -86,7 +145,23 @@ export interface WelcomeEventSettings {
 export interface GuildSettings {
   general: { accentColor: number; updatesChannelId: string | null };
   moderation: { enabled: boolean; logChannelId: string | null; reportsChannelId: string | null; dmOnAction: boolean; requireReason: boolean };
-  logging: { enabled: boolean; channelId: string | null; events: LogEvent[]; ignoredChannelIds: string[] };
+  logging: {
+    enabled: boolean;
+    channelId: string | null;
+    events: LogEvent[];
+    categoryChannels: Record<LogCategory, string | null>;
+    ignoredChannelIds: string[];
+    ignoredRoleIds: string[];
+    includeBots: boolean;
+    recordMessageContent: boolean;
+    recordAttachments: boolean;
+    detectionEnabled: boolean;
+    alertRoleIds: string[];
+    alertMinimumSeverity: 'medium' | 'high' | 'critical';
+    viewerRoleIds: string[];
+    sensitiveEvidenceRoleIds: string[];
+    retentionDays: Record<LogCategory, 0 | 7 | 30 | 90 | 180 | 365>;
+  };
   welcome: { enabled: boolean; join: WelcomeEventSettings; leaveEnabled: boolean; leave: WelcomeEventSettings; autoRoleIds: string[]; waitForScreening: boolean };
   tickets: {
     enabled: boolean;
