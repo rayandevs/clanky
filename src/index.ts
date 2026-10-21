@@ -7,6 +7,7 @@ import { connectDatabase, disconnectDatabase } from './database/connection.js';
 import { levels } from './services/index.js';
 import { startTranscriptAttachmentCleanup } from './modules/tickets/attachmentArchive.js';
 import { startSuggestionDigest } from './modules/suggestions/service.js';
+import { startRaidResponseWorker } from './modules/moderation/raidService.js';
 import { registerEvents } from './events/index.js';
 import { modules } from './modules/index.js';
 
@@ -17,6 +18,7 @@ const client = new Clanky();
 let dashboard: Awaited<ReturnType<typeof startDashboard>> = null;
 let stopTranscriptAttachmentCleanup: () => void = () => undefined;
 let stopSuggestionDigest: () => void = () => undefined;
+let stopRaidResponseWorker: () => void = () => undefined;
 client.register(modules);
 registerEvents(client);
 logger.info(`Loaded ${client.commands.size} commands and ${client.components.size} component handlers`);
@@ -25,6 +27,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info(`${signal} received, shutting down…`);
   stopTranscriptAttachmentCleanup();
   stopSuggestionDigest();
+  stopRaidResponseWorker();
   await dashboard?.close().catch(() => null);
   await client.destroy().catch(() => null);
   await disconnectDatabase().catch(() => null);
@@ -37,6 +40,7 @@ process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection',
 process.on('uncaughtException', (error) => logger.error('Uncaught exception', error));
 
 await connectDatabase();
+client.once('ready', () => { stopRaidResponseWorker = startRaidResponseWorker(client); });
 const migratedLevelMembers = await levels.migrateMemberProgress();
 if (migratedLevelMembers) logger.info(`Migrated ${migratedLevelMembers} leveling records for updated message and progression tracking`);
 stopTranscriptAttachmentCleanup = startTranscriptAttachmentCleanup();

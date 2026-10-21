@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.1.0-beta.6",
+    "date": "2026-10-21",
+    "title": "A more flexible moderation desk",
+    "highlights": [
+      "Review durable message reports and member appeals alongside searchable case history and staff-only notes",
+      "Configure rolling warning-to-timeout tiers, selected raid-response channels, slowmode, and report/appeal retention",
+      "Use responsive queue cards with permission-checked actions, case notes, and audited void/reopen controls",
+      "Let Timeout Members moderators use the desk, debounce searches, and keep staff-only action notes out of member-facing messages"
+    ]
+  },
+  {
     "version": "0.1.0-beta.5",
     "date": "2026-10-21",
     "title": "Logging, clearly explained",

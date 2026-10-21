@@ -54,7 +54,7 @@ export interface ManagedGuild {
  * Resolves a server the logged-in user may manage. Checks live
  * permissions through the bot, so removed admins lose access right away.
  */
-export async function managedGuild(client: Clanky, request: FastifyRequest, reply: FastifyReply): Promise<ManagedGuild | null> {
+export async function managedGuild(client: Clanky, request: FastifyRequest, reply: FastifyReply, moderationAccess = false): Promise<ManagedGuild | null> {
   const { guildId } = request.params as { guildId: string };
   const userId = request.session!.record.userId;
   const guild = /^\d{17,20}$/.test(guildId) ? client.guilds.cache.get(guildId) : undefined;
@@ -63,8 +63,9 @@ export async function managedGuild(client: Clanky, request: FastifyRequest, repl
     return null;
   }
   const member = await guild.members.fetch(userId).catch(() => null);
-  if (!member || !member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-    reply.code(403).send({ error: 'forbidden', message: 'You need the Manage Server permission.' });
+  const allowed = member && (member.permissions.has(PermissionFlagsBits.ManageGuild) || (moderationAccess && member.permissions.has(PermissionFlagsBits.ModerateMembers)));
+  if (!allowed) {
+    reply.code(403).send({ error: 'forbidden', message: moderationAccess ? 'You need Timeout Members or Manage Server permission to use the Moderation Desk.' : 'You need the Manage Server permission.' });
     return null;
   }
   return { guild, member };

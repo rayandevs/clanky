@@ -11,6 +11,10 @@ export interface CaseRecord {
   targetTag: string;
   moderatorId: string;
   reason: string | null;
+  status?: 'active' | 'voided';
+  notes?: Array<{ moderatorId: string; text: string; createdAt: Date }>;
+  reportId?: string | null;
+  appealId?: string | null;
   /** Duration in ms for timeouts. */
   duration: number | null;
   logMessageId: string | null;
@@ -28,6 +32,10 @@ const caseSchema = new Schema<CaseRecord>(
     targetTag: { type: String, default: 'unknown' },
     moderatorId: { type: String, required: true },
     reason: { type: String, default: null },
+    status: { type: String, enum: ['active', 'voided'], default: 'active' },
+    notes: { type: [{ moderatorId: { type: String, required: true }, text: { type: String, required: true, maxlength: 1000 }, createdAt: { type: Date, required: true, default: Date.now } }], default: [] },
+    reportId: { type: String, default: null },
+    appealId: { type: String, default: null },
     duration: { type: Number, default: null },
     logMessageId: { type: String, default: null },
     logChannelId: { type: String, default: null },

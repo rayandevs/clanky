@@ -144,7 +144,18 @@ export interface WelcomeEventSettings {
 
 export interface GuildSettings {
   general: { accentColor: number; updatesChannelId: string | null };
-  moderation: { enabled: boolean; logChannelId: string | null; reportsChannelId: string | null; dmOnAction: boolean; requireReason: boolean };
+  moderation: {
+    enabled: boolean;
+    logChannelId: string | null;
+    reportsChannelId: string | null;
+    dmOnAction: boolean;
+    requireReason: boolean;
+    warningWindowDays: number;
+    warningEscalations: Array<{ warnings: number; durationSeconds: number }>;
+    raidChannelIds: string[];
+    raidSlowmodeSeconds: number;
+    reviewRetentionDays: 30 | 90 | 180 | 365;
+  };
   logging: {
     enabled: boolean;
     channelId: string | null;

@@ -96,22 +96,33 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
-    slug: 'moderation-and-reports', title: 'Moderation and message reports', summary: 'Take moderation actions, keep case history, and let members report messages.', category: 'safety', icon: 'Shield', readTime: 4, tags: ['warn', 'timeout', 'kick', 'ban', 'purge', 'cases', 'report', 'staff', 'mod log'],
+    slug: 'moderation-and-reports', title: 'Moderation and message reports', summary: 'Take moderation actions, review member reports and appeals, and keep useful case history.', category: 'safety', icon: 'Shield', readTime: 6, tags: ['warn', 'timeout', 'kick', 'ban', 'purge', 'cases', 'report', 'appeal', 'raid response', 'staff', 'mod log'],
     sections: [
       { id: 'moderation-actions', title: 'Take a moderation action', blocks: [
         { type: 'paragraph', text: 'Clanky provides /warn, /timeout, /untimeout, /kick, /ban, /unban, and /purge. Discord checks your permissions and Clanky’s role position before an action can go through.' },
         { type: 'steps', items: [
           { title: 'Choose the right command', body: 'Select the member and action. For a timeout, choose a duration; for a purge, specify how many recent messages to remove.' },
           { title: 'Add a clear reason', body: 'Give a brief reason so other moderators understand what happened. Your server may require a reason.' },
-          { title: 'Review the result', body: 'Clanky creates a numbered case and, when configured, posts it to the moderation log. If enabled, it also tries to message the affected member.' },
-          { title: 'Find the case later', body: 'Use /cases view or /cases user to look up moderation history.' },
+          { title: 'Review the result', body: 'Clanky creates a numbered case, replies privately with a case link, and—when configured—posts the action to the moderation log. If enabled, it also tries to message the affected member.' },
+          { title: 'Find the case later', body: 'Use /cases view or /cases user. Add private staff notes, edit the reason, or void a mistaken case without deleting its history.' },
         ] },
       ] },
       { id: 'report', title: 'Let members report a message', blocks: [
         { type: 'steps', items: [
-          { title: 'Set a reports channel', body: 'A server manager opens /settings moderation and chooses the channel for reports.' },
+          { title: 'Set a reports channel', body: 'Choose a reports channel in /settings moderation or the dashboard. Reports are also saved for the private Moderation Desk, and the dashboard setting controls how long report and appeal text is kept.' },
           { title: 'Report from Discord', body: 'A member right-clicks a message, chooses Apps → Report message, then selects a reason and optionally adds details.' },
-          { title: 'Review the report', body: 'Moderators with the required permission can dismiss the report, remove the message, or apply the available timeout action.' },
+          { title: 'Review the report', body: 'Open the server’s Moderation Desk to search reports, add a staff-only note, claim a review, delete the reported message, or apply the one-hour timeout. Discord permissions and role order are checked before an action.' },
+          { title: 'Appeal a case', body: 'When member DMs are enabled, a member can use Appeal this action in the case notice and send a private statement. Staff can review, accept, or decline it in the Moderation Desk. The decision is recorded but does not automatically undo a timeout or ban.' },
+        ] },
+      ] },
+      { id: 'warning-escalation', title: 'Optional warning escalation', blocks: [
+        { type: 'paragraph', text: 'In Moderation settings, choose a rolling warning window and add timeout tiers—for example, a 10-minute timeout at 3 warnings and a 1-day timeout at 5. Only active warnings inside the chosen window count. Escalation never automatically kicks or bans a member.' },
+      ] },
+      { id: 'raid-response', title: 'Temporary raid response', blocks: [
+        { type: 'steps', items: [
+          { title: 'Choose channels first', body: 'In Moderation settings, select the text channels Clanky may slow down and choose the slowmode value. If no channels are selected, raid response is unavailable.' },
+          { title: 'Preview before starting', body: 'A server manager uses /raid start with a duration from 5 minutes to 24 hours, reviews the selected channels, then confirms. Use /raid status to check the end time or /raid end to stop early.' },
+          { title: 'Let Clanky restore settings', body: 'Clanky saves the original slowmode and restores it when the timer ends, including after a restart. If staff change slowmode during the response, Clanky leaves that newer value alone.' },
         ] },
       ] },
       { id: 'permissions', title: 'If an action fails', blocks: [

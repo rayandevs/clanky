@@ -8,6 +8,7 @@ import type { GuildSettings } from '../../settings/schema.js';
 import { button, divider, panel, row, text, v2 } from '../../ui/components.js';
 import { emoji, type EmojiKey } from '../../ui/emoji.js';
 import { colors } from '../../ui/theme.js';
+import { appealButton } from './appeals.js';
 
 const log = createLogger('moderation');
 
@@ -28,6 +29,7 @@ export function caseContainer(record: CaseRecord) {
     `${emoji('user')} **${record.type === 'purge' ? 'Channel' : 'Member'}** ${target}`,
     `${emoji('shield')} **Moderator** <@${record.moderatorId}>`,
     record.duration ? `${emoji('clock')} **Duration** ${formatDuration(record.duration)}` : null,
+    record.status === 'voided' ? `${emoji('info')} **Case status** Voided` : null,
     `${emoji('list')} **Reason** ${record.reason ?? '*No reason given*'}`,
   ].filter(Boolean);
 
@@ -52,18 +54,33 @@ export async function logCase(guild: Guild, settings: GuildSettings, record: Cas
 }
 
 /** Tells the member what happened. Best effort — DMs may be closed. */
-export async function notifyMember(user: User, guild: Guild, type: CaseType, reason: string | null, duration?: number | null) {
+export async function notifyMember(user: User, guild: Guild, type: CaseType, reason: string | null, duration?: number | null, record?: CaseRecord, pendingRemoval = false) {
   const style = CASE_STYLE[type];
   const lines = [
-    `You were **${style.past}** in **${guild.name}**.`,
+    pendingRemoval
+      ? `A moderator is about to ${type === 'kick' ? 'kick' : 'ban'} you from **${guild.name}**. This case is recorded below.`
+      : `You were **${style.past}** in **${guild.name}**.`,
     duration ? `${emoji('clock')} **Duration** ${formatDuration(duration)}` : null,
     `${emoji('list')} **Reason** ${reason ?? 'No reason given'}`,
+    pendingRemoval ? 'Use the button below to send context to the moderators. An appeal does not automatically stop the action.' : null,
   ].filter(Boolean);
   const container = panel({ title: style.label, emoji: style.emoji, description: lines.join('\n'), accent: style.color, thumbnail: guild.iconURL() });
+  if (record && ['warn', 'timeout', 'kick', 'ban'].includes(type)) container.addActionRowComponents(appealButton(guild.id, record.caseId));
   return user.send(v2(container)).then(() => true).catch(() => false);
 }
 
-/** Short public confirmation after an action. */
+/** Corrects a pre-action notice if Discord rejects the kick or ban. */
+export async function notifyActionCancelled(user: User, type: 'kick' | 'ban', guild: Guild, caseId: number): Promise<void> {
+  const action = type === 'kick' ? 'kick' : 'ban';
+  await user.send(v2(panel({
+    title: 'Action not applied',
+    emoji: 'info',
+    description: `The planned ${action} from **${guild.name}** did not go through. Case #${caseId} is marked voided; contact the server moderators if you already sent an appeal.`,
+    accent: colors.muted,
+  }))).catch(() => null);
+}
+
+/** Concise case-linked confirmation; moderation commands reply privately. */
 export function actionDone(record: CaseRecord, targetName: string, dmSent: boolean | null) {
   const style = CASE_STYLE[record.type];
   const extra = dmSent === false ? `\n-# ${emoji('dm')} Couldn't DM them.` : '';

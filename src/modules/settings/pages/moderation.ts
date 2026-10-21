@@ -1,4 +1,5 @@
 import { channelMention, row, status } from '../../../ui/components.js';
+import { formatDuration } from '../../../core/time.js';
 import { emoji } from '../../../ui/emoji.js';
 import { channelPicker, finishPage, pageHeader, save, selectedIds, toggleButton, type SettingsPage } from '../kit.js';
 
@@ -12,6 +13,9 @@ export const moderationPage: SettingsPage = {
       `${emoji('report')} **Reports** · ${channelMention(s.reportsChannelId)}`,
       `${emoji('dm')} **DM members** · ${status(s.dmOnAction)}`,
       `${emoji('edit')} **Reason required** · ${status(s.requireReason)}`,
+      `${emoji('warn')} **Warning window** · ${s.warningWindowDays} days${s.warningEscalations.length ? ` · ${s.warningEscalations.map((tier) => `${tier.warnings} warnings → ${formatDuration(tier.durationSeconds * 1000)} timeout`).join(' · ')}` : ' · no automatic escalation'}`,
+      `${emoji('shield')} **Raid response** · ${s.raidChannelIds.length} selected channels · ${s.raidSlowmodeSeconds}s slowmode · start with /raid start`,
+      `${emoji('clock')} **Report and appeal retention** · ${s.reviewRetentionDays} days`,
     ].join('\n');
 
     const container = pageHeader(env, 'moderation', summary)

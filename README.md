@@ -2,7 +2,7 @@
 
 A multipurpose Discord bot for **community management, moderation and engagement** — built with the newest Discord features and set up entirely from Discord.
 
-> **Version:** `0.1.0-beta.19` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
+> **Version:** `0.1.0-beta.20` · codename **Spark** · see [CHANGELOG.md](CHANGELOG.md)
 
 - **Slash commands only.** No prefixes, no message commands.
 - **Components V2 everywhere.** Every message uses Containers, Sections, Text Displays, Separators and File components. No embeds.
@@ -20,8 +20,9 @@ A multipurpose Discord bot for **community management, moderation and engagement
 | Module | What it does |
 | --- | --- |
 | ⚙️ **Settings** | `/settings` panel with a page per module. Turn modules on/off, pick channels and roles, edit messages in modals, and set an accent color. |
-| 🛡️ **Moderation** | Warn, timeout, kick, ban, unban and purge. Every action becomes a numbered **case** with history, editable reasons, a mod log and optional DMs to the member. |
-| 🚩 **Reports** | Right-click a message → **Report message**. Staff get a report card with buttons to delete the message, time out the author or dismiss. |
+| 🛡️ **Moderation** | Private command confirmations, rolling warning counts with optional timeout-only escalation, durable case history, private staff notes, and auditable void/reopen actions. |
+| 🚩 **Reports & appeals** | Members can report messages or appeal a case from its DM notice. Staff review reports, appeals, and case history in one dashboard Moderation Desk. |
+| 🚨 **Raid response** | Preview a temporary slowmode across explicitly selected channels. Clanky restores the original value at expiry and leaves later staff changes untouched. |
 | 🤖 **AutoMod** | One-click **native Discord AutoMod** rules: invite links, mention spam, spam and blocked words. They keep working when Clanky is offline. |
 | 🎫 **Tickets** | Up to three panels, each with a customizable intake form and optional staff/category/transcript routing. Answers are saved with the ticket and transcript; tracked panels can be refreshed in place. |
 | 👋 **Welcome** | Welcome and leave messages with placeholders, avatars and **auto roles** (works with membership screening). |
@@ -50,6 +51,7 @@ A multipurpose Discord bot for **community management, moderation and engagement
 | `/ban` `/unban` | Bans (unban has autocomplete) | Ban Members |
 | `/purge` | Bulk delete messages | Manage Messages |
 | `/cases view` `/cases user` | Case lookup | Timeout Members |
+| `/raid start` `/raid status` `/raid end` | Temporary slowmode response in configured channels | Manage Server |
 | **Report message** (right-click) | Report to staff | Everyone |
 | `/ticket panel` `add` `remove` `close` | Tickets | Panel: Manage Server |
 | `/rolepanel create` `list` `delete` | Role panels | Manage Roles |

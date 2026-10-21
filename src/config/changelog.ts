@@ -11,6 +11,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.1.0-beta.20',
+    date: '2026-10-21',
+    title: 'A more flexible moderation desk',
+    highlights: [
+      'Review durable message reports and private member appeals in the dashboard, with searchable case history and staff-only notes',
+      'Configure optional rolling warning-to-timeout tiers, and let members appeal eligible cases from their DM notice',
+      'Preview temporary raid-response slowmode in selected channels, with safe restoration after expiry or restart',
+      'Keep case history auditable with void/reopen controls and private command confirmations',
+      'Limit review access to moderators and server managers, recover report actions safely, and deliver kick/ban appeal links before removal',
+    ],
+  },
+  {
     version: '0.1.0-beta.19',
     date: '2026-10-20',
     title: 'A clearer view of server activity',
