@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
 import { motion } from 'motion/react';
-import { ChevronsUpDown, FileText, History, LayoutGrid, ShieldAlert } from 'lucide-react';
+import { ChevronsUpDown, FileText, History, LayoutGrid, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
 import { BrandSpinner, EmptyState, ModuleSwitch, Panel, RequireLogin, useGuildSettings } from '@/components/dash';
@@ -16,6 +16,7 @@ const SettingsPage = lazy(() => import('./settings/SettingsPage'));
 const HistoryPage = lazy(() => import('./settings/History'));
 const TicketTranscriptsPage = lazy(() => import('./TicketTranscripts'));
 const IncidentCenterPage = lazy(() => import('./IncidentCenter'));
+const ModerationQueuePage = lazy(() => import('./ModerationQueue'));
 
 export const SECTIONS: Array<{ id: SectionId; name: string; emoji: string }> = [
   { id: 'general', name: 'General', emoji: '⚙️' },
@@ -101,6 +102,7 @@ function Sidebar({ guild, active }: { guild: Overview['guild']; active: string }
         {item(`/dashboard/${guild.id}/history`, active === 'history', <><History className="size-[18px] text-faint" /> Change history</>, 'nav-history')}
         {item(`/dashboard/${guild.id}/transcripts`, active === 'transcripts', <><FileText className="size-[18px] text-faint" /> Ticket transcripts</>, 'nav-ticket-transcripts')}
         {item(`/dashboard/${guild.id}/incidents`, active === 'incidents', <><ShieldAlert className="size-[18px] text-faint" /> Incident center</>, 'nav-incident-center')}
+        {item(`/dashboard/${guild.id}/moderation-desk`, active === 'moderation-desk', <><ShieldCheck className="size-[18px] text-faint" /> Moderation desk</>, 'nav-moderation-desk')}
       </nav>
     </Glass>
   );
@@ -334,7 +336,7 @@ export default function Guild() {
   const activeSection = section.split('?')[0] ?? '';
   return (
     <RequireLogin next={location}>
-      {activeSection === 'transcripts' ? <TicketTranscriptsPage guildId={guildId} /> : activeSection === 'incidents' ? <IncidentCenterPage guildId={guildId} /> : <GuildArea />}
+      {activeSection === 'transcripts' ? <TicketTranscriptsPage guildId={guildId} /> : activeSection === 'incidents' ? <IncidentCenterPage guildId={guildId} /> : activeSection === 'moderation-desk' ? <ModerationQueuePage guildId={guildId} /> : <GuildArea />}
     </RequireLogin>
   );
 }

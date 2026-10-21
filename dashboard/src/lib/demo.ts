@@ -80,7 +80,7 @@ function loggerListItem(event: LoggerEvent): Omit<LoggerEvent, 'evidence'> {
 
 const MODULES: Meta['modules'] = [
   { id: 'general', name: 'General', emoji: 'settings', description: 'Look and feel, update notes and modules.', toggleable: false, hasSettingsPage: true },
-  { id: 'moderation', name: 'Moderation', emoji: 'shield', description: 'Warn, timeout, kick and ban with case history.', toggleable: true, hasSettingsPage: true },
+  { id: 'moderation', name: 'Moderation', emoji: 'shield', description: 'Warn, timeout, review reports and appeals, and keep auditable case history.', toggleable: true, hasSettingsPage: true },
   { id: 'automod', name: 'AutoMod', emoji: 'automod', description: 'Block invites, spam and bad words using Discord AutoMod.', toggleable: true, hasSettingsPage: true },
   { id: 'logging', name: 'Logging', emoji: 'log', description: 'Search event evidence, review grouped incidents, tune privacy and retry delivery.', toggleable: true, hasSettingsPage: true },
   { id: 'welcome', name: 'Welcome', emoji: 'welcome', description: 'Greet new members and give them roles.', toggleable: true, hasSettingsPage: true },
@@ -94,8 +94,8 @@ const MODULES: Meta['modules'] = [
 ];
 
 const meta: Meta = {
-  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.19', label: 'v0.1.0 Beta 19', codename: 'Spark' }, servers: 128, members: 48_210, commands: 25, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
-  dashboard: { version: { raw: '0.1.0-beta.5', label: 'v0.1.0 Beta 5', codename: 'Rench' } },
+  bot: { name: 'Clanky', avatar: null, online: true, version: { raw: '0.1.0-beta.20', label: 'v0.1.0 Beta 20', codename: 'Spark' }, servers: 128, members: 48_210, commands: 26, uptime: 3 * 86_400_000 + 5 * 3_600_000, ping: 42 },
+  dashboard: { version: { raw: '0.1.0-beta.6', label: 'v0.1.0 Beta 6', codename: 'Rench' } },
   game: { items: 44, zones: 4 },
   modules: MODULES,
   loginEnabled: true,
@@ -150,7 +150,7 @@ const roles: Role[] = [
 
 const defaults = (): GuildSettings => ({
   general: { accentColor: 0xe2702f, updatesChannelId: id(12) },
-  moderation: { enabled: true, logChannelId: id(41), reportsChannelId: id(42), dmOnAction: true, requireReason: false },
+  moderation: { enabled: true, logChannelId: id(41), reportsChannelId: id(42), dmOnAction: true, requireReason: false, warningWindowDays: 90, warningEscalations: [{ warnings: 3, durationSeconds: 600 }, { warnings: 5, durationSeconds: 86_400 }], raidChannelIds: [id(21), id(22)], raidSlowmodeSeconds: 10, reviewRetentionDays: 180 },
   logging: {
     enabled: true,
     channelId: id(43),
@@ -282,6 +282,7 @@ const player: SalvagePlayer = {
 
 const changelog: { bot: Release[]; dashboard: Release[] } = {
   bot: [
+    { version: '0.1.0-beta.20', date: '2026-10-21', title: 'A more flexible moderation desk', highlights: ['Review durable reports, private appeals, and searchable cases in one dashboard', 'Configure rolling warning-to-timeout tiers and temporary raid response in selected channels', 'Keep staff notes private, cases auditable, and moderation confirmations private'] },
     { version: '0.1.0-beta.19', date: '2026-10-20', title: 'A clearer view of server activity', highlights: ['Search a durable activity timeline and group related high-risk signals into incidents', 'Review affected members, channels, roles and moderator actions, with notes and retryable Discord delivery', 'Choose category destinations, retention periods, and separate access for logs and sensitive evidence'] },
     { version: '0.1.0-beta.18', date: '2026-10-19', title: 'Unsaved edits, in sight', highlights: ['Keep unsaved settings visible in a fixed side panel while you scroll through a server page', 'Collapse the panel to a small side tab while editing, then save or reset when you are ready'] },
     { version: '0.1.0-beta.17', date: '2026-10-19', title: 'A guide for every step', highlights: ['Added a searchable Help Center to the dashboard, with friendly step-by-step guides for Clanky’s bot and web features', 'Find answers by topic, share a direct guide link, and follow related articles without leaving the dashboard', 'Fixed a route-transition cleanup issue that could replace pages with the dashboard error screen'] },
@@ -299,6 +300,7 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-beta.4', date: '2026-10-15', title: 'Profile cards 🪪', highlights: ['`/salvage profile` is now an image card', 'Cleaner, easier-to-read game messages'] },
   ],
   dashboard: [
+    { version: '0.1.0-beta.6', date: '2026-10-21', title: 'A more flexible moderation desk', highlights: ['Review durable message reports and member appeals alongside searchable case history and staff-only notes', 'Configure rolling warning-to-timeout tiers, selected raid-response channels, slowmode, and report/appeal retention', 'Use responsive queue cards with permission-checked actions and audited case status controls'] },
     { version: '0.1.0-beta.5', date: '2026-10-21', title: 'Logging, clearly explained', highlights: ['Expanded the Logging guide with setup, event categories, routing, exclusions, and defaults', 'Explained evidence privacy, access roles, retention, risk signals, and what integrity hashes can and cannot tell you', 'Added step-by-step incident review, delivery retry guidance, permission checks, and troubleshooting'] },
     { version: '0.1.0-beta.4', date: '2026-10-20', title: 'A closer look at incidents', highlights: ['Review grouped alerts in one incident timeline with affected objects and moderator actions', 'Search and filter activity, check evidence integrity, and retry log messages Discord could not deliver', 'Control who can view logs or sensitive message evidence in server Logging settings'] },
     { version: '0.1.0-beta.3', date: '2026-10-19', title: 'Save controls, always at hand', highlights: ['Keep Save and Reset visible in a fixed side panel while you work through settings', 'Collapse the panel to a small animated side tab and reopen it whenever you need the controls', 'The panel stays tucked away until the changes are saved or reset'] },
@@ -314,6 +316,27 @@ const changelog: { bot: Release[]; dashboard: Release[] } = {
     { version: '0.1.0-alpha.1', date: '2026-10-15', title: 'First light 🔦', highlights: ['Log in with Discord', 'Every server setting in one place', 'Server overview with stats and history', 'Your Salvage profile, bag and collection', 'Personal preferences'] },
   ],
 };
+
+type DemoReport = { reportId: string; reporterId: string; targetId: string; channelId: string; messageId: string; messageUrl: string; reason: string; details: string | null; contentSnapshot: string; status: string; processingAt?: string | null; reviewNote: string | null; caseId: number | null; createdAt: string };
+type DemoAppeal = { appealId: string; caseId: number; targetId: string; statement: string; status: string; reviewerNote: string | null; createdAt: string; case: { type: string; reason: string | null; status: string; createdAt: string } | null };
+type DemoCase = { caseId: number; type: string; targetId: string; targetTag: string; moderatorId: string; reason: string | null; duration: number | null; status: 'active' | 'voided'; notes: Array<{ moderatorId: string; text: string; createdAt: string }>; createdAt: string };
+const moderationDemo = new Map<string, { reports: DemoReport[]; appeals: DemoAppeal[]; cases: DemoCase[] }>();
+function moderationFor(guildId: string) {
+  let data = moderationDemo.get(guildId);
+  if (!data) {
+    data = {
+      reports: [{ reportId: 'd0000000-0000-4000-8000-000000000001', reporterId: id(901), targetId: people[5]!.id, channelId: id(21), messageId: id(912), messageUrl: `https://discord.com/channels/${guildId}/${id(21)}/${id(912)}`, reason: 'spam', details: 'This looks like a fake Nitro link.', contentSnapshot: 'Claim your free Nitro now: example.invalid/claim', status: 'open', processingAt: null, reviewNote: null, caseId: null, createdAt: hoursAgo(0.4) }],
+      appeals: [{ appealId: 'd0000000-0000-4000-8000-000000000002', caseId: 41, targetId: people[3]!.id, statement: 'I understand the rule. This was a mistake and I will not post that again.', status: 'submitted', reviewerNote: null, createdAt: hoursAgo(8), case: { type: 'warn', reason: 'Repeated caps in #general', status: 'active', createdAt: hoursAgo(10) } }],
+      cases: [
+        { caseId: 42, type: 'timeout', targetId: people[5]!.id, targetTag: 'spammer', moderatorId: people[1]!.id, reason: 'Repeated scam links', duration: 3_600_000, status: 'active', notes: [{ moderatorId: people[1]!.id, text: 'Reviewed the original report before action.', createdAt: hoursAgo(1.7) }], createdAt: hoursAgo(2) },
+        { caseId: 41, type: 'warn', targetId: people[3]!.id, targetTag: 'loudguy', moderatorId: people[0]!.id, reason: 'Repeated caps in #general', duration: null, status: 'active', notes: [], createdAt: hoursAgo(10) },
+        { caseId: 40, type: 'ban', targetId: people[4]!.id, targetTag: 'freenitro.lol', moderatorId: people[2]!.id, reason: 'Scam links', duration: null, status: 'active', notes: [], createdAt: hoursAgo(26) },
+      ],
+    };
+    moderationDemo.set(guildId, data);
+  }
+  return data;
+}
 
 export async function demoApi<T>(method: string, path: string, body?: unknown): Promise<T> {
   await wait(method === 'GET' ? 260 : 420);
@@ -338,6 +361,52 @@ export async function demoApi<T>(method: string, path: string, body?: unknown): 
     const g = guildList.find((x) => x.id === b);
     if (!g?.botIn) throw new ApiError(404, "Clanky isn't in that server.", 'not_found');
     if (c === 'logging' && d === 'context' && method === 'GET') return ok({ guild: { id: g.id, name: g.name, icon: g.icon }, canManage: demoCanManage(b), canViewSensitive: demoCanManage(b), loggingEnabled: settingsOf(b).logging.enabled });
+    if (c === 'moderation') {
+      if (!demoCanManage(b)) throw new ApiError(403, 'Only server managers can review moderation records.', 'forbidden');
+      const records = moderationFor(b);
+      if (d === 'reviews' && method === 'GET') {
+        const params = new URLSearchParams(path.split('?')[1] ?? '');
+        const kind = (params.get('kind') ?? 'reports') as 'reports' | 'appeals' | 'cases';
+        const status = params.get('status') ?? 'open';
+        const q = (params.get('q') ?? '').toLowerCase();
+        const page = Math.max(0, Number(params.get('page')) || 0);
+        const source = kind === 'reports' ? records.reports : kind === 'appeals' ? records.appeals : records.cases;
+        const entries = source.filter((item) => (status === 'all' || item.status === status) && (!q || `${'caseId' in item ? item.caseId : ''} ${'targetTag' in item ? item.targetTag : ''} ${'reporterId' in item ? item.reporterId : ''} ${'targetId' in item ? item.targetId : ''} ${'messageId' in item ? item.messageId : ''} ${'reason' in item ? item.reason ?? '' : ''} ${'contentSnapshot' in item ? item.contentSnapshot : ''} ${'statement' in item ? item.statement : ''} ${'details' in item ? item.details ?? '' : ''}`.toLowerCase().includes(q.replace(/^#/, '')))).sort((x, y) => y.createdAt.localeCompare(x.createdAt));
+        return ok({ kind, total: entries.length, page, pages: Math.max(1, Math.ceil(entries.length / 20)), entries: entries.slice(page * 20, (page + 1) * 20), stats: { open: kind === 'reports' ? records.reports.filter((x) => ['open', 'processing'].includes(x.status)).length : kind === 'appeals' ? records.appeals.filter((x) => x.status === 'submitted').length : 0, reviewing: kind === 'reports' ? records.reports.filter((x) => x.status === 'in_review').length : kind === 'appeals' ? records.appeals.filter((x) => x.status === 'reviewing').length : 0 } });
+      }
+      if (d === 'reports' && e && parts[6] === 'review' && method === 'POST') {
+        const report = records.reports.find((item) => item.reportId === e);
+        if (!report) throw new ApiError(404, 'That report has expired or was removed.', 'not_found');
+        const change = body as { action: string; note?: string };
+        report.status = change.action === 'claim' ? 'in_review' : change.action === 'dismiss' ? 'dismissed' : 'resolved';
+        report.reviewNote = change.note || (change.action === 'timeout' ? 'Timed out for 1h (case #42).' : null);
+        if (change.action === 'timeout') report.caseId = 42;
+        return ok({ ok: true, report });
+      }
+      if (d === 'appeals' && e && parts[6] === 'review' && method === 'POST') {
+        const appeal = records.appeals.find((item) => item.appealId === e);
+        if (!appeal) throw new ApiError(404, 'That appeal was removed.', 'not_found');
+        const change = body as { status: string; note?: string };
+        appeal.status = change.status;
+        appeal.reviewerNote = change.note || null;
+        if (['accepted', 'denied'].includes(change.status)) records.cases.find((item) => item.caseId === appeal.caseId)?.notes.push({ moderatorId: people[0]!.id, text: `${change.status === 'accepted' ? 'Appeal accepted' : 'Appeal denied'}${change.note ? `: ${change.note}` : '.'}`, createdAt: new Date().toISOString() });
+        return ok({ ok: true, appeal });
+      }
+      if (d === 'cases' && e && method === 'POST') {
+        const record = records.cases.find((item) => item.caseId === Number(e));
+        if (!record) throw new ApiError(404, 'That case could not be found.', 'not_found');
+        const verb = parts[6];
+        if (verb === 'notes') {
+          const change = body as { text: string };
+          record.notes.push({ moderatorId: people[0]!.id, text: change.text, createdAt: new Date().toISOString() });
+        } else if (verb === 'status') {
+          const change = body as { status: 'active' | 'voided'; reason: string };
+          record.status = change.status;
+          record.notes.push({ moderatorId: people[0]!.id, text: `${change.status === 'voided' ? 'Voided' : 'Reopened'}: ${change.reason}`, createdAt: new Date().toISOString() });
+        }
+        return ok({ ok: true, case: record });
+      }
+    }
     if (c === 'incidents') {
       const data = loggerDataFor(b);
       if (!d && method === 'GET') {

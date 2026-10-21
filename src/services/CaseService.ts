@@ -9,6 +9,8 @@ export interface NewCase {
   moderatorId: string;
   reason: string | null;
   duration?: number | null;
+  reportId?: string | null;
+  appealId?: string | null;
 }
 
 class CaseService {
@@ -35,17 +37,28 @@ class CaseService {
     return CaseModel.findOneAndUpdate({ guildId, caseId }, { $set: { reason } }, { returnDocument: 'after' }).lean<CaseRecord>();
   }
 
+  async addNote(guildId: string, caseId: number, moderatorId: string, text: string): Promise<CaseRecord | null> {
+    return CaseModel.findOneAndUpdate(
+      { guildId, caseId },
+      { $push: { notes: { $each: [{ moderatorId, text: text.trim().slice(0, 1000), createdAt: new Date() }], $slice: -50 } } },
+      { returnDocument: 'after' },
+    ).lean<CaseRecord>();
+  }
+
+  async setStatus(guildId: string, caseId: number, status: 'active' | 'voided', note?: { moderatorId: string; text: string }): Promise<CaseRecord | null> {
+    return CaseModel.findOneAndUpdate(
+      { guildId, caseId },
+      { $set: { status }, ...(note ? { $push: { notes: { $each: [{ ...note, text: note.text.trim().slice(0, 1000), createdAt: new Date() }], $slice: -50 } } } : {}) },
+      { returnDocument: 'after' },
+    ).lean<CaseRecord>();
+  }
+
   async setLogMessage(guildId: string, caseId: number, channelId: string, messageId: string): Promise<void> {
     await CaseModel.updateOne({ guildId, caseId }, { $set: { logChannelId: channelId, logMessageId: messageId } });
   }
 
-  async delete(guildId: string, caseId: number): Promise<boolean> {
-    const result = await CaseModel.deleteOne({ guildId, caseId });
-    return result.deletedCount > 0;
-  }
-
-  async countWarnings(guildId: string, targetId: string): Promise<number> {
-    return CaseModel.countDocuments({ guildId, targetId, type: 'warn' });
+  async countWarnings(guildId: string, targetId: string, since?: Date): Promise<number> {
+    return CaseModel.countDocuments({ guildId, targetId, type: 'warn', status: { $ne: 'voided' }, ...(since ? { createdAt: { $gte: since } } : {}) });
   }
 }
 

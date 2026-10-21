@@ -17,3 +17,6 @@ export * from './LoggerEvent.js';
 export * from './Incident.js';
 export * from './GamePlayer.js';
 export * from './DashboardSession.js';
+export * from './ModerationReport.js';
+export * from './ModerationAppeal.js';
+export * from './RaidResponse.js';

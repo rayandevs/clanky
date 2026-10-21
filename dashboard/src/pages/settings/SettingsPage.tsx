@@ -109,7 +109,7 @@ function Moderation({ guildId, data }: Props) {
       <SectionHeader emoji="🛡️" title="Moderation" description="Warn, timeout, kick and ban, with a case for every action." enabled={v.enabled} onToggle={(x) => d.set('enabled', x)} />
       <OffNotice show={!v.enabled}>
         <Panel title="Channels">
-          <Field label="Mod log" description="Every case is posted here, with buttons to edit or undo it.">
+          <Field label="Mod log" description="Every case is posted here with its case number and action details.">
             <ChannelPicker value={v.logChannelId} onChange={(x) => d.set('logChannelId', x)} channels={ch} testId="picker-mod-log" />
           </Field>
           <Field label="Reports" description="Where Report message (right-click menu) sends reports.">
@@ -122,6 +122,41 @@ function Moderation({ guildId, data }: Props) {
           </Field>
           <Field inline label="Require a reason" description="Moderators must give a reason for every action.">
             <Switch checked={v.requireReason} onChange={(x) => d.set('requireReason', x)} label="Require a reason" testId="switch-reason" />
+          </Field>
+        </Panel>
+        <Panel title="Warning escalation" description="Optional timeouts only. A tier applies when active warnings reach its threshold within the rolling window; Clanky never kicks or bans automatically.">
+          <Field label="Warning window" description="Older warnings stop counting after this many days.">
+            <Slider value={v.warningWindowDays} onChange={(x) => d.set('warningWindowDays', x)} min={1} max={365} suffix="d" testId="slider-warning-window" />
+          </Field>
+          <div className="space-y-3 py-3">
+            {v.warningEscalations.map((tier, index) => (
+              <div key={`${index}-${tier.warnings}`} className="grid grid-cols-1 items-end gap-3 rounded-xl border border-line bg-black/20 p-3 sm:grid-cols-[1fr_1fr_auto]">
+                <Field label="At warnings" description="2–20 active warnings">
+                  <Input aria-label={`Escalation warning count ${index + 1}`} type="number" min={2} max={20} value={tier.warnings} onChange={(e) => d.set('warningEscalations', v.warningEscalations.map((entry, i) => i === index ? { ...entry, warnings: Number(e.target.value) } : entry))} />
+                </Field>
+                <Field label="Timeout" description="Maximum 28 days">
+                  <select aria-label={`Escalation timeout ${index + 1}`} value={tier.durationSeconds} onChange={(e) => d.set('warningEscalations', v.warningEscalations.map((entry, i) => i === index ? { ...entry, durationSeconds: Number(e.target.value) } : entry))} className="h-10 w-full rounded-xl border border-line bg-black/25 px-3 text-[14px] text-text">
+                    {(![300, 600, 1800, 3600, 21_600, 86_400, 604_800, 2_419_200].includes(tier.durationSeconds) && <option value={tier.durationSeconds}>{tier.durationSeconds} seconds</option>)}
+                    {[[300, '5 minutes'], [600, '10 minutes'], [1800, '30 minutes'], [3600, '1 hour'], [21_600, '6 hours'], [86_400, '1 day'], [604_800, '7 days'], [2_419_200, '28 days']].map(([seconds, label]) => <option key={seconds} value={seconds}>{label}</option>)}
+                  </select>
+                </Field>
+                <Button type="button" variant="danger" size="icon" aria-label={`Remove escalation tier ${index + 1}`} onClick={() => d.set('warningEscalations', v.warningEscalations.filter((_, i) => i !== index))}><Trash2 className="size-4" /></Button>
+              </div>
+            ))}
+            <Button type="button" disabled={v.warningEscalations.length >= 8 || (v.warningEscalations.at(-1)?.warnings ?? 1) >= 20} onClick={() => d.set('warningEscalations', [...v.warningEscalations, { warnings: Math.min(20, (v.warningEscalations.at(-1)?.warnings ?? 1) + 1), durationSeconds: 600 }])}><Plus className="size-4" /> Add timeout tier</Button>
+          </div>
+        </Panel>
+        <Panel title="Temporary raid response" description="Choose exactly which text channels Clanky will slow down. Starting a response is a separate moderator command and restores original slowmode when it ends.">
+          <Field label="Channels" description="Select up to 25 channels. With none selected, raid response is unavailable; Clanky never applies a server-wide change by default.">
+            <MultiChannelPicker value={v.raidChannelIds} onChange={(x) => d.set('raidChannelIds', x)} channels={ch} max={25} testId="picker-raid-channels" />
+          </Field>
+          <Field label="Slowmode" description="Slowmode applied during the response.">
+            <Input aria-label="Raid response slowmode seconds" type="number" min={5} max={21_600} value={v.raidSlowmodeSeconds} onChange={(e) => d.set('raidSlowmodeSeconds', Number(e.target.value))} data-testid="input-raid-slowmode" />
+          </Field>
+          <Field label="Report and appeal retention" description="Review records are removed after this period; case records are kept separately.">
+            <select aria-label="Review record retention" value={v.reviewRetentionDays} onChange={(e) => d.set('reviewRetentionDays', Number(e.target.value) as 30 | 90 | 180 | 365)} className="h-10 w-full rounded-xl border border-line bg-black/25 px-3.5 text-[14px] text-text focus:border-rust-400/60 focus:outline-none">
+              {[30, 90, 180, 365].map((days) => <option key={days} value={days}>{days} days</option>)}
+            </select>
           </Field>
         </Panel>
       </OffNotice>

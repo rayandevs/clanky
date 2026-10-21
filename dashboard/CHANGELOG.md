@@ -4,6 +4,13 @@ The dashboard has its own version, separate from the bot. Tags use the `dashboar
 
 ## Unreleased
 
+## 0.1.0-beta.6 · Rench · 2026-10-21
+
+- Added the Moderation Desk with report and appeal queues, searchable cases, staff-only notes, and guarded review actions
+- Added dashboard controls for rolling warning escalation, explicitly selected raid-response channels, slowmode, and review-record retention
+- Added responsive moderation settings and a help guide for reports, appeals, cases, warning policies, and raid response
+- Let Timeout Members moderators use the desk, re-check permissions on case edits, debounce searches, and keep staff-only action notes out of member-facing messages
+
 ## 0.1.0-beta.5 · Rench · 2026-10-21
 
 - Expanded the Logging guide with clear setup steps, event categories, channel routing, exclusions, and default settings

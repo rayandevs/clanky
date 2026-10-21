@@ -16,6 +16,7 @@ import { publicRoutes } from './routes/public.js';
 import { feedbackRoutes } from './routes/feedback.js';
 import { loggingRoutes } from './routes/logging.js';
 import { dashboardVersion } from './version.js';
+import { moderationRoutes } from './routes/moderation.js';
 
 const log = createLogger('dashboard');
 const DIST = fileURLToPath(new URL('../../dashboard/dist/', import.meta.url));
@@ -78,6 +79,7 @@ export async function createDashboard(client: Clanky): Promise<FastifyInstance> 
   await app.register(async (scope) => meRoutes(scope, client));
   await app.register(async (scope) => guildRoutes(scope, client));
   await app.register(async (scope) => loggingRoutes(scope, client));
+  await app.register(async (scope) => moderationRoutes(scope, client));
 
   if (existsSync(DIST)) {
     await app.register(fastifyStatic, {

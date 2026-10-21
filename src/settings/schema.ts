@@ -48,6 +48,14 @@ export const ModerationSettings = z.object({
   reportsChannelId: channel,
   dmOnAction: z.boolean().default(true),
   requireReason: z.boolean().default(false),
+  /** Count only active warnings created within this rolling window. */
+  warningWindowDays: z.number().int().min(1).max(365).default(90),
+  /** Each tier applies a timeout at its exact active-warning count. */
+  warningEscalations: z.array(z.object({ warnings: z.number().int().min(2).max(20), durationSeconds: z.number().int().min(5).max(2_419_200) })).max(8).refine((tiers) => new Set(tiers.map((tier) => tier.warnings)).size === tiers.length, { message: 'Warning escalation thresholds must be unique.' }).default([]),
+  /** Empty means raid response is not configured; admins select channels explicitly. */
+  raidChannelIds: roles(25).refine((ids) => new Set(ids).size === ids.length, { message: 'Raid-response channels must be unique.' }),
+  raidSlowmodeSeconds: z.number().int().min(5).max(21_600).default(10),
+  reviewRetentionDays: z.union([z.literal(30), z.literal(90), z.literal(180), z.literal(365)]).default(180),
 });
 
 export const LoggingSettings = z.object({

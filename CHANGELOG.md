@@ -4,6 +4,21 @@ All notable changes to Clanky. Versions follow [SemVer](https://semver.org) with
 
 ## [Unreleased]
 
+## [0.1.0-beta.20] — 2026-10-21
+
+### Added
+- Added a searchable dashboard Moderation Desk for durable message reports, member appeals, and case history
+- Added optional rolling warning escalation tiers that apply timeouts only, plus temporary raid-response slowmode with restart-safe restoration
+- Added DM-based case appeals, staff-only case notes, auditable void/reopen controls, configurable report/appeal retention, and private moderation confirmations
+- Restricted the Moderation Desk to moderators and server managers, fenced report-action retries, serialized raid restoration, and sent kick/ban appeal notices before removal
+
+## Dashboard 0.1.0-beta.6 — 2026-10-21
+
+### Added
+- Added the Moderation Desk with report and appeal queues, searchable cases, staff-only notes, and guarded review actions
+- Added dashboard controls for rolling warning escalation, explicitly selected raid-response channels, slowmode, and review-record retention
+- Added responsive moderation settings and a help guide for reports, appeals, cases, warning policies, and raid response
+
 ## Dashboard 0.1.0-beta.5 — 2026-10-21
 
 ### Documentation
